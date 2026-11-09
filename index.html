@@ -1372,7 +1372,7 @@ Error generating stack: `+u.message+`
 #order-view .otop{position:sticky;top:0;z-index:5;background:#111;color:#fff;padding:10px}
 #order-view .otop h1{margin:0;font-size:17px}#order-view .otop p{margin:2px 0 0;font-size:11px;opacity:.75}
 #order-view .obadge{display:inline-block;background:#25D366;color:#111;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:900;margin-top:6px}
-#order-view .otabs{display:flex;gap:6px;padding:8px 10px 0}#order-view .otabs button{flex:1;border:1.5px solid #111;border-radius:10px;padding:9px 4px;font-size:13px;font-weight:900;cursor:pointer;background:#fff}#order-view .otabs button.on{background:#111;color:#fff}
+#order-view .otabs{display:flex;gap:6px;padding:8px 10px 0;position:sticky;top:108px;z-index:4;background:#FFF8E7}#order-view .otabs button{flex:1;border:2px solid #111;border-radius:10px;padding:11px 4px;font-size:14px;font-weight:900;cursor:pointer;background:#fff}#order-view .otabs button.on{background:#111;color:#fff}
 #order-view .osearch{display:flex;gap:6px;padding:8px 10px 0}#order-view .osearch input{flex:1;padding:9px 10px;border:1.5px solid #111;border-radius:10px;font-size:14px;font-weight:700;background:#fff}#order-view .osearch select{padding:9px 6px;border:1.5px solid #111;border-radius:10px;font-weight:800;font-size:12px;background:#fff}
 #order-view .ohint{padding:6px 10px 0;font-size:11px;color:#666}
 #order-view .olist{padding:6px 8px 8px}
@@ -1398,11 +1398,12 @@ Error generating stack: `+u.message+`
 </style>
 <div id="admin-order-panel" style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:9999;background:#111;color:#fff;padding:10px 12px;box-shadow:0 -3px 12px rgba(0,0,0,.3)">
 <div style="max-width:900px;margin:0 auto">
-<div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:13px">🛒 ORDER LINKS — ONE PER CUSTOMER <span style="opacity:.6;font-weight:400">v13</span></b><span style="font-size:11px;opacity:.8">Tap = Copy link (FOOD + NON FOOD together)</span></div>
+<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font-size:13px">🛒 ORDER LINKS — ONE PER CUSTOMER <span style="opacity:.6;font-weight:400">v14</span></b><span style="font-size:11px;opacity:.8">Tap = Copy link (FOOD + NON FOOD together)</span></div>
+<div id="admin-order-note" style="display:none;margin-top:8px;background:#ffef9e;color:#111;border-radius:8px;padding:8px 10px;font-size:12px;font-weight:700"></div>
 <div id="admin-order-btns" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"></div>
 </div></div>
 <div id="order-view" aria-hidden="true"><div class="phone">
-<div class="otop"><h1 id="o-title">Order</h1><p style="font-size:11px;opacity:.75">v13 — FOOD / NON FOOD in one page • Price = RATE for this customer only &nbsp;•&nbsp; 1 Case = Case Qty pcs</p><span class="obadge" id="o-badge"></span></div>
+<div class="otop"><h1 id="o-title">Order</h1><p style="font-size:11px;opacity:.75">v14 — FOOD / NON FOOD in one page • Price = RATE for this customer only &nbsp;•&nbsp; 1 Case = Case Qty pcs</p><span class="obadge" id="o-badge"></span></div>
 <div class="otabs"><button id="o-tab-food" class="on">FOOD (<span id="o-count-food">0</span>)</button><button id="o-tab-nonfood">NON FOOD (<span id="o-count-nonfood">0</span>)</button></div>
 <div class="osearch"><input id="o-search" placeholder="🔍 Search item..." autocomplete="off"><select id="o-sort"><option value="az">A–Z</option><option value="priceAsc">₹ Low</option><option value="priceDesc">₹ High</option></select></div>
 <p class="ohint">Tap <b>− / +</b> to set qty, choose <b>CASE / PCS</b>, tap <b>ADD</b>. Cart is at the bottom.</p>
@@ -1411,6 +1412,7 @@ Error generating stack: `+u.message+`
 <div class="obar"><div class="obarTop"><div><span id="o-count">🧺 Cart: 0 items</span><br><b id="o-total">TOTAL: Rs.0.00</b></div><button class="oview" id="o-view">View Cart ↑</button></div>
 <div class="osheet" id="o-sheet"><input id="o-name" placeholder="Your Name / Shop Name"><input id="o-place" placeholder="Place / Town"><div id="o-cart"></div><div class="obtns2"><button class="ocopy2" id="o-copy-wa">📋 Copy WhatsApp Order</button><button class="oclear" id="o-clear">Clear</button></div><div class="opreview" id="o-preview"></div></div>
 </div></div>
+
 <script>
 (function(){
 var ORDER_DATA={"ws": [{"name": "50*50 36/CBB -35", "caseQty": "36", "price": "29.75"}, {"name": "20*20 BSKT -25", "caseQty": "50", "price": "20.75"}, {"name": "ALWIN DARK WHITE -125", "caseQty": "24", "price": "88.5"}, {"name": "APPY FIZZ -10", "caseQty": "1", "price": "325"}, {"name": "ARROW ROOT -50", "caseQty": "16", "price": "42.5"}, {"name": "BIG TRIK -150", "caseQty": "24", "price": "97"}, {"name": "BOOMER STRBR -200", "caseQty": "16", "price": "167.5"}, {"name": "BOOMZ BOX -5", "caseQty": "24", "price": "103.5"}, {"name": "BORBONE -40", "caseQty": "48", "price": "20"}, {"name": "CENTER FRESH-225", "caseQty": "16", "price": "194"}, {"name": "CHAMPION ROLL -30", "caseQty": "120", "price": "22"}, {"name": "CINTU BISCO -200", "caseQty": "18", "price": "145"}, {"name": "CREAM BISCUIT 2 FLVR-10", "caseQty": "72", "price": "7.35"}, {"name": "ENDON DAZZY -300", "caseQty": "12", "price": "183.5"}, {"name": "GEMS -5", "caseQty": "108", "price": "4.47"}, {"name": "GOODAY -45", "caseQty": "20", "price": "34.5"}, {"name": "GREEN APPLE TRGT", "caseQty": "40", "price": "48.5"}, {"name": "HIDE SEEK -60", "caseQty": "60", "price": "37"}, {"name": "IMLI ALWIN -80", "caseQty": "32", "price": "48.5"}, {"name": "KINDER CREAMY 288/CBB -25", "caseQty": "288", "price": "19.5"}, {"name": "KINDER JOY GIRL 50", "caseQty": "192", "price": "43.75"}, {"name": "KING JOY JAR -450", "caseQty": "12", "price": "196"}, {"name": "KITKAT -10", "caseQty": "24", "price": "374"}, {"name": "KOPIKO PACKET -100", "caseQty": "32", "price": "75"}, {"name": "LOLLYPOP ALWIN 5 FLVR -1", "caseQty": "32", "price": "47.8"}, {"name": "LOTTE CHOCO PIE 18PC-10", "caseQty": "12", "price": "138.5"}, {"name": "MALKIST -45", "caseQty": "60", "price": "32.5"}, {"name": "MANGO RAS KIK -10", "caseQty": "1", "price": "195"}, {"name": "MELODY -50", "caseQty": "48", "price": "43.5"}, {"name": "MELODY -100", "caseQty": "24", "price": "84"}, {"name": "MILKYBAR -10", "caseQty": "24", "price": "263"}, {"name": "MUNCH -10", "caseQty": "24", "price": "207.5"}, {"name": "NUTELLA -239", "caseQty": "1", "price": "187"}, {"name": "NUTELLA -429", "caseQty": "1", "price": "305"}, {"name": "ORBIT 3 FLVR -160", "caseQty": "20", "price": "133"}, {"name": "PARLE G -30", "caseQty": "48", "price": "25.8"}, {"name": "PEANUT PKT", "caseQty": "30", "price": "61"}, {"name": "POTATO BISCUIT -25", "caseQty": "48", "price": "19.5"}, {"name": "SAFARI -5", "caseQty": "20", "price": "103.5"}, {"name": "SNICKERS -20", "caseQty": "12", "price": "486"}, {"name": "TOFILUK -5", "caseQty": "12", "price": "170"}, {"name": "UNIBIC CHOCO -5", "caseQty": "216", "price": "3.5"}, {"name": "UNIBIC MILK -5", "caseQty": "216", "price": "3.5"}, {"name": "X5 CHOCOLATE -150", "caseQty": "24", "price": "105"}], "wsmain": [{"name": "50*50 36/CBB -35", "caseQty": "36", "price": "29.5"}, {"name": "20*20 BSKT -25", "caseQty": "50", "price": "20.5"}, {"name": "ALWIN DARK WHITE -125", "caseQty": "24", "price": "88.00"}, {"name": "APPY FIZZ -10", "caseQty": "1", "price": "320"}, {"name": "ARROW ROOT -50", "caseQty": "16", "price": "42"}, {"name": "BIG TRIK -150", "caseQty": "24", "price": "96"}, {"name": "BOOMER STRBR -200", "caseQty": "16", "price": "166.25"}, {"name": "BOOMZ BOX -5", "caseQty": "24", "price": "102.9"}, {"name": "BORBONE -40", "caseQty": "48", "price": "19.75"}, {"name": "CENTER FRESH-225", "caseQty": "16", "price": "193.5"}, {"name": "CHAMPION ROLL -30", "caseQty": "120", "price": "22"}, {"name": "CINTU BISCO -200", "caseQty": "18", "price": "142"}, {"name": "CREAM BISCUIT 2 FLVR-10", "caseQty": "72", "price": "7.30"}, {"name": "ENDON DAZZY -300", "caseQty": "12", "price": "181.5"}, {"name": "GEMS -5", "caseQty": "108", "price": "4.45"}, {"name": "GOODAY -45", "caseQty": "20", "price": "34.25"}, {"name": "GREEN APPLE TRGT", "caseQty": "40", "price": "48"}, {"name": "HIDE SEEK -60", "caseQty": "60", "price": "36.75"}, {"name": "IMLI ALWIN -80", "caseQty": "32", "price": "48"}, {"name": "KINDER CREAMY 288/CBB -25", "caseQty": "288", "price": "19"}, {"name": "KINDER JOY GIRL 50", "caseQty": "192", "price": "43.5"}, {"name": "KING JOY JAR -450", "caseQty": "12", "price": "195"}, {"name": "KITKAT -10", "caseQty": "24", "price": "372"}, {"name": "KOPIKO PACKET -100", "caseQty": "32", "price": "74.75"}, {"name": "LOLLYPOP ALWIN 5 FLVR -1", "caseQty": "32", "price": "47.25"}, {"name": "LOTTE CHOCO PIE 18PC-10", "caseQty": "12", "price": "138"}, {"name": "MALKIST -45", "caseQty": "60", "price": "32.25"}, {"name": "MANGO RAS KIK -10", "caseQty": "1", "price": "190"}, {"name": "MELODY -50", "caseQty": "48", "price": "43"}, {"name": "MELODY -100", "caseQty": "24", "price": "83.25"}, {"name": "MILKYBAR -10", "caseQty": "24", "price": "262.25"}, {"name": "MUNCH -10", "caseQty": "24", "price": "206.5"}, {"name": "NUTELLA -239", "caseQty": "1", "price": "186"}, {"name": "NUTELLA -429", "caseQty": "1", "price": "303"}, {"name": "ORBIT 3 FLVR -160", "caseQty": "20", "price": "132"}, {"name": "PARLE G -30", "caseQty": "48", "price": "25.60"}, {"name": "PEANUT PKT", "caseQty": "30", "price": "60.70"}, {"name": "POTATO BISCUIT -25", "caseQty": "48", "price": "19.25"}, {"name": "SAFARI -5", "caseQty": "20", "price": "102"}, {"name": "SNICKERS -20", "caseQty": "12", "price": "483"}, {"name": "TOFILUK -5", "caseQty": "12", "price": "167"}, {"name": "UNIBIC CHOCO -5", "caseQty": "216", "price": "3.4"}, {"name": "UNIBIC MILK -5", "caseQty": "216", "price": "3.4"}, {"name": "X5 CHOCOLATE -150", "caseQty": "24", "price": "104"}], "wholesale": [{"name": "50*50 36/CBB -35", "caseQty": "36", "price": "29.25"}, {"name": "20*20 BSKT -25", "caseQty": "50", "price": "20.25"}, {"name": "ALWIN DARK WHITE -125", "caseQty": "24", "price": "87.5"}, {"name": "APPY FIZZ -10", "caseQty": "1", "price": "315"}, {"name": "ARROW ROOT -50", "caseQty": "16", "price": "41.75"}, {"name": "BIG TRIK -150", "caseQty": "24", "price": "96"}, {"name": "BOOMER STRBR -200", "caseQty": "16", "price": "164"}, {"name": "BOOMZ BOX -5", "caseQty": "24", "price": "102.00"}, {"name": "BORBONE -40", "caseQty": "48", "price": "19.5"}, {"name": "CENTER FRESH-225", "caseQty": "16", "price": "193.00"}, {"name": "CHAMPION ROLL -30", "caseQty": "120", "price": "CASE 21.50"}, {"name": "CINTU BISCO -200", "caseQty": "18", "price": "140"}, {"name": "CREAM BISCUIT 2 FLVR-10", "caseQty": "72", "price": "7.25"}, {"name": "ENDON DAZZY -300", "caseQty": "12", "price": "180"}, {"name": "GEMS -5", "caseQty": "108", "price": "4.41"}, {"name": "GOODAY -45", "caseQty": "20", "price": "34"}, {"name": "GREEN APPLE TRGT", "caseQty": "40", "price": "47.5"}, {"name": "HIDE SEEK -60", "caseQty": "60", "price": "36.5"}, {"name": "IMLI ALWIN -80", "caseQty": "32", "price": "47.5"}, {"name": "KINDER CREAMY 288/CBB -25", "caseQty": "288", "price": "18.85"}, {"name": "KINDER JOY GIRL 50", "caseQty": "192", "price": "43.25"}, {"name": "KING JOY JAR -450", "caseQty": "12", "price": "193"}, {"name": "KITKAT -10", "caseQty": "24", "price": "371"}, {"name": "KOPIKO PACKET -100", "caseQty": "32", "price": "74.5"}, {"name": "LOLLYPOP ALWIN 5 FLVR -1", "caseQty": "32", "price": "46.9"}, {"name": "LOTTE CHOCO PIE 18PC-10", "caseQty": "12", "price": "137.5"}, {"name": "MALKIST -45", "caseQty": "60", "price": "31.9"}, {"name": "MANGO RAS KIK -10", "caseQty": "1", "price": "184"}, {"name": "MELODY -50", "caseQty": "48", "price": "42.9"}, {"name": "MELODY -100", "caseQty": "24", "price": "83"}, {"name": "MILKYBAR -10", "caseQty": "24", "price": "262.25"}, {"name": "MUNCH -10", "caseQty": "24", "price": "205.5"}, {"name": "NUTELLA -239", "caseQty": "1", "price": "184"}, {"name": "NUTELLA -429", "caseQty": "1", "price": "300"}, {"name": "ORBIT 3 FLVR -160", "caseQty": "20", "price": "131"}, {"name": "PARLE G -30", "caseQty": "48", "price": "25.50"}, {"name": "PEANUT PKT", "caseQty": "30", "price": "60.50"}, {"name": "POTATO BISCUIT -25", "caseQty": "48", "price": "19"}, {"name": "SAFARI -5", "caseQty": "20", "price": "99"}, {"name": "SNICKERS -20", "caseQty": "12", "price": "480"}, {"name": "TOFILUK -5", "caseQty": "12", "price": "166.00"}, {"name": "UNIBIC CHOCO -5", "caseQty": "216", "price": "3.3"}, {"name": "UNIBIC MILK -5", "caseQty": "216", "price": "3.3"}, {"name": "X5 CHOCOLATE -150", "caseQty": "24", "price": "103.5"}]};
@@ -1419,27 +1421,23 @@ var COLORS={ws:"#d8f0df",wsmain:"#ffeed6",wholesale:"#d9eef0"};
 var cat="ws", cart={}, qtyState={}, unitState={};
 var orderTab="food";
 var ORDER_NONFOOD_DATA={};
-function currentItems(){ return orderTab==="nonfood" ? (ORDER_NONFOOD_DATA[cat]||[]) : (ORDER_DATA[cat]||[]); }
-function refreshTabCounts(){ document.getElementById("o-count-food").textContent=(ORDER_DATA[cat]||[]).length; document.getElementById("o-count-nonfood").textContent=(ORDER_NONFOOD_DATA[cat]||[]).length; document.getElementById("o-tab-food").classList.toggle("on", orderTab==="food"); document.getElementById("o-tab-nonfood").classList.toggle("on", orderTab==="nonfood"); }
 function priceOf(it){var v=parseFloat(String(it.price).replace(/[^0-9.]/g,""));return isFinite(v)?v:0}
 function fmt(n){return "Rs."+n.toFixed(2)}
 function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;")}
+function currentItems(){ return orderTab==="nonfood" ? (ORDER_NONFOOD_DATA[cat]||[]) : (ORDER_DATA[cat]||[]); }
+function refreshTabCounts(){ var f=document.getElementById("o-count-food"), nf=document.getElementById("o-count-nonfood"); if(f) f.textContent=(ORDER_DATA[cat]||[]).length; if(nf) nf.textContent=(ORDER_NONFOOD_DATA[cat]||[]).length; var tf=document.getElementById("o-tab-food"), tn=document.getElementById("o-tab-nonfood"); if(tf) tf.classList.toggle("on", orderTab==="food"); if(tn) tn.classList.toggle("on", orderTab==="nonfood"); }
 function openOrder(c, fromCustomer){
-  cat=c; cart={}; qtyState={}; unitState={};
+  cat=c; cart={}; qtyState={}; unitState={}; orderTab="food";
   document.getElementById("o-title").textContent="🛒 Order — "+(LABELS[cat]||cat);
   document.getElementById("o-badge").textContent=(LABELS[cat]||cat)+" PRICE LIST ONLY";
   document.getElementById("o-search").value="";
-  orderTab="food"; refreshTabCounts();
+  refreshTabCounts();
   var v=document.getElementById("order-view"); v.classList.add("open"); v.setAttribute("aria-hidden","false");
-  // Customer link: if they opened via #order-ws, keep hash. If admin opened it, set hash so Copy works.
   if(location.hash!=="#order-"+cat){ history.replaceState(null,"","#order-"+cat); }
   renderList(); renderCart();
   window.scrollTo(0,0);
 }
-function closeOrder(){
-  document.getElementById("order-view").classList.remove("open");
-  history.replaceState(null,"","#");
-}
+function closeOrder(){ document.getElementById("order-view").classList.remove("open"); history.replaceState(null,"","#"); }
 function filtered(){var q=(document.getElementById("o-search").value||"").toLowerCase();var arr=currentItems().map(function(it,i){var o={name:it.name,caseQty:it.caseQty,price:it.price,_i:i};return o;}).filter(function(i){return i.name.toLowerCase().indexOf(q)>=0});var s=document.getElementById("o-sort").value;arr.sort(function(a,b){return s==="priceAsc"?priceOf(a)-priceOf(b):s==="priceDesc"?priceOf(b)-priceOf(a):a.name.localeCompare(b.name);});return arr;}
 function renderList(){
   var arr=filtered();
@@ -1454,7 +1452,7 @@ function renderList(){
     +'<div class="ostep"><button data-act="minus">−</button><input data-act="qty" type="number" min="0" inputmode="numeric" value="'+q+'"><button data-act="plus">+</button></div>'
     +'<button class="oadd '+(inCart?"incart":"")+'" data-act="add">'+(inCart?"✓ "+inCart+" ADDED":"ADD")+'</button></div>'
     +'<div class="olt">'+q+' '+(u==="case"?"CASE":"PCS")+' = '+(u==="case"?q*cq+" pcs":"")+' • '+fmt(lineAmt)+'</div></div>';
-  }).join("")||"<p style='padding:10px'>No items found.</p>";
+  }).join("")||"<p style='padding:10px'>No items in "+(orderTab==="nonfood"?"NON FOOD":"FOOD")+" for this customer yet.</p>";
 }
 function lineAmt(i){return i.unit==="case"?i.qty*i.caseQty*i.price:i.qty*i.price}
 function total(){return Object.values(cart).reduce(function(s,i){return s+lineAmt(i)},0)}
@@ -1482,8 +1480,6 @@ document.getElementById("o-list").addEventListener("click",function(e){
   if(act==="minus"){var q=qtyState[qk]===undefined?1:qtyState[qk]; qtyState[qk]=Math.max(0,q-1); renderList();}
   if(act==="add"){var q2=qtyState[qk]===undefined?1:qtyState[qk]; if(q2<=0){alert("Set qty first");return} var u=unitState[qk]||"case"; var key=orderTab+"|"+it.name+"|"+u; if(cart[key])cart[key].qty+=q2; else cart[key]={name:it.name,unit:u,qty:q2,price:priceOf(it),caseQty:parseInt(it.caseQty)||1,tab:orderTab}; renderCart(); renderList(); }
 });
-document.getElementById("o-tab-food").addEventListener("click",function(){ orderTab="food"; refreshTabCounts(); renderList(); });
-document.getElementById("o-tab-nonfood").addEventListener("click",function(){ orderTab="nonfood"; refreshTabCounts(); renderList(); });
 document.getElementById("o-list").addEventListener("change",function(e){
   if(e.target.dataset.act==="qty"){var row=e.target.closest(".orow"); var idx=parseInt(row.dataset.idx); qtyState[orderTab+"_"+idx]=Math.max(0,parseFloat(e.target.value)||0); renderList();}
 });
@@ -1499,11 +1495,10 @@ document.getElementById("o-copy-wa").addEventListener("click",async function(){i
 document.getElementById("o-clear").addEventListener("click",function(){if(confirm("Clear cart?")){cart={}; renderCart(); renderList();}});
 document.getElementById("o-search").addEventListener("input",renderList);
 document.getElementById("o-sort").addEventListener("change",renderList);
+document.getElementById("o-tab-food").addEventListener("click",function(){ orderTab="food"; refreshTabCounts(); renderList(); });
+document.getElementById("o-tab-nonfood").addEventListener("click",function(){ orderTab="nonfood"; refreshTabCounts(); renderList(); });
 
-/* --- Copy Order Link button inside Preview & Share for EVERY category, incl. newly created ones --- */
-/* No Preview modal needed. Live RATE is read straight from the price table:
-   header: [ITEM NAME, AVAILABLE, PURCHASE RATE, CASE QTY, (PROFIT,PRICE,RATE) x categories...]
-   body:   td[0]=name, td[1]=avail, td[3]=caseQty, td[4 + catIndex*3 + 2]=RATE  */
+/* ================= ADMIN: ONE Copy button per customer, in OUR panel (outside React) ================= */
 function slugify(s){ return String(s||"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"") || "customer"; }
 function catNameFromPreviewBtn(btn){
   var txt=(btn.innerText||"").replace(/\r/g,"");
@@ -1512,24 +1507,19 @@ function catNameFromPreviewBtn(btn){
   var lines=txt.split("\n").map(function(x){return x.trim()}).filter(Boolean);
   return lines[0]||"";
 }
-function catSlug(name){
-  var s=slugify(name);
-  if(s==="ws-main") return "wsmain";
-  return s;
-}
+function catSlug(name){ var s=slugify(name); if(s==="ws-main") return "wsmain"; return s; }
+function isNonFoodAdmin(){ return (document.body.innerText||"").indexOf("Non Food Price List")>=0; }
 function getCategoryIndex(catName){
   var ths=[].slice.call(document.querySelectorAll("table.price-table thead th"));
-  // th[0..3] are ITEM NAME, AVAILABLE, PURCHASE RATE, CASE QTY. Category ths start at index 4.
   for(var i=4;i<ths.length;i++){
     var txt=(ths[i].innerText||"").replace(/\s+/g," ").trim();
-    // Category th contains e.g. "WS SPECIAL PROFIT PRICE RATE"
     if(txt.toUpperCase().indexOf(catName.toUpperCase())===0) return i-4;
   }
   return -1;
 }
 function readLiveRates(catName){
   var k=getCategoryIndex(catName);
-  if(k<0) return null;
+  if(k<0) return [];
   var rows=[].slice.call(document.querySelectorAll("table.price-table tbody tr"));
   var items=[];
   rows.forEach(function(tr){
@@ -1541,45 +1531,38 @@ function readLiveRates(catName){
     var sel=availCell.querySelector("select");
     var avail=sel ? sel.value : (availCell.innerText||"");
     var caseQty=(cells[3].innerText||"1").trim()||"1";
+    if(caseQty==="—" || caseQty==="–" || caseQty==="-") caseQty="1";
     var rate=(cells[4 + k*3 + 2].innerText||"").trim();
-    if(avail && avail.indexOf("Out of Stock")>=0) rate=""; // out of stock -> no order
+    if(rate==="—" || rate==="–" || rate==="-" || rate==="") rate="";
+    if(avail && avail.indexOf("Out of Stock")>=0) rate="";
     items.push({name:name, caseQty:caseQty, price:rate});
   });
   return items;
 }
-function b64urlEncode(str){
-  var b=btoa(unescape(encodeURIComponent(str)));
-  return b.replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+/* Cache: while you browse FOOD, tick() saves FOOD data. While you browse NON FOOD, it saves NON FOOD data.
+   Copy then uses the cache - NO tab switch, NO blink, NO new category flashing. */
+var CACHE={food:{}, nonfood:{}};
+function cacheCurrentTab(cats){
+  var tab=isNonFoodAdmin()?"nonfood":"food";
+  Object.keys(cats).forEach(function(slug){
+    var catName=cats[slug];
+    var items=readLiveRates(catName);
+    if(items.length) CACHE[tab][catName]=items;
+  });
 }
-function b64urlDecode(s){
-  s=s.replace(/-/g,"+").replace(/_/g,"/");
-  while(s.length%4) s+="=";
-  return decodeURIComponent(escape(atob(s)));
-}
-function parseOrderHash(){
-  var h=(location.hash||"").replace(/^#/,"");
-  if(h.indexOf("order-")===0){ var rest=h.slice("order-".length); }
-  else {
-    var q=(location.search||"").replace(/^\?/,"");
-    var m=q.match(/(?:^|&)order=([^&]+)/);
-    if(!m) return null;
-    var rest=decodeURIComponent(m[1]);
-  }
-  var ci=rest.indexOf(":");
-  if(ci>=0) return {slug:rest.slice(0,ci), enc:rest.slice(ci+1)};
-  return {slug:rest, enc:""};
-}
+function b64urlEncode(str){ var b=btoa(unescape(encodeURIComponent(str))); return b.replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,""); }
+function b64urlDecode(s){ s=s.replace(/-/g,"+").replace(/_/g,"/"); while(s.length%4) s+="="; return decodeURIComponent(escape(atob(s))); }
 function getOrderLinkBase(){
   var stored="";
   try{ stored=localStorage.getItem("orderLinkBase")||""; }catch(e){}
   if(stored){
     stored=stored.trim().replace(/#.*$/,"").replace(/\?.*$/,"").replace(/\/$/,"");
-    if(stored.toLowerCase().slice(-5)===".html") return stored; // already pasted full file link (GitHub Pages)
+    if(stored.toLowerCase().slice(-5)===".html") return stored;
     return stored+"/Price-List-Single-File.html";
   }
   var here=(location.href||"").split("#")[0].split("?")[0];
   if(location.protocol==="file:"){
-    var pasted=prompt("This file is NOT hosted yet, so a file:// link will NOT open on your customer's phone.\n\n1) Upload this ONE file to Netlify Drop (free) and copy its https:// link.\n2) Paste that https:// link here ONCE.\n\nPaste your hosted link (or Cancel to copy the local link anyway):","");
+    var pasted=prompt("This file is NOT hosted yet, so a file:// link will NOT open on your customer's phone.\n\n1) Upload this ONE file to GitHub Pages and copy its https:// link.\n2) Paste that https:// link here ONCE.\n\nPaste your hosted link (or Cancel to copy the local link anyway):","");
     if(pasted && pasted.indexOf("http")===0){
       pasted=pasted.trim().replace(/#.*$/,"").replace(/\?.*$/,"").replace(/\/$/,"");
       try{ localStorage.setItem("orderLinkBase", pasted); }catch(e){}
@@ -1589,64 +1572,68 @@ function getOrderLinkBase(){
   }
   return here;
 }
-function isNonFoodAdmin(){ return (document.body.innerText||"").indexOf("Non Food Price List")>=0; }
-function findAdminTabButton(tab){
-  var btns=[].slice.call(document.querySelectorAll("button"));
-  for(var i=0;i<btns.length;i++){
-    var txt=(btns[i].innerText||"").trim();
-    if(tab==="food" && txt.indexOf("FOOD (")===0) return btns[i];
-    if(tab==="nonfood" && txt.indexOf("NON FOOD (")===0) return btns[i];
+/* SHORT LINK: only what changed travels in the link.
+   Old categories: embedded FOOD data already in the file, so only RATEs you CHANGED are sent.
+   If nothing changed and no NON FOOD, link is just #order-ws (no long code at all).
+   NON FOOD: only its items, compact name~price~caseQty */
+function buildShortLink(catName, slug, foodItems, nonfoodItems){
+  var base=getOrderLinkBase();
+  var embedded=ORDER_DATA[slug];
+  var isOld=!!embedded;
+  var foodPart="", nonfoodPart="";
+  if(isOld){
+    var diffs=[];
+    var embMap={}; embedded.forEach(function(it){ embMap[it.name]=String(it.price).trim(); });
+    foodItems.forEach(function(it){
+      if(it.price && embMap[it.name]!==undefined && embMap[it.name]!==String(it.price).trim()){
+        var bi=embedded.findIndex(function(e){ return e.name===it.name; });
+        if(bi>=0) diffs.push(bi+":"+encodeURIComponent(String(it.price).trim()));
+      }
+    });
+    foodPart=diffs.join(",");
+    var mode="D";
+    if(!foodPart && !nonfoodItems.filter(function(it){return it.price;}).length) return base+"#order-"+slug;
+    nonfoodPart=nonfoodItems.filter(function(it){return it.price;}).map(function(it){ return encodeURIComponent(it.name)+"~"+encodeURIComponent(String(it.price).trim())+"~"+encodeURIComponent(String(it.caseQty)); }).join("|");
+    var compact=mode+"|"+foodPart+"|"+nonfoodPart;
+    return base+"#order-"+slug+":"+b64urlEncode(compact);
+  } else {
+    var baseNames=(ORDER_DATA.ws||[]).map(function(it){return it.name});
+    var full=[];
+    foodItems.forEach(function(it){ var bi=baseNames.indexOf(it.name); if(bi>=0 && it.price) full.push(bi+":"+encodeURIComponent(String(it.price).trim())); });
+    foodPart=full.join(",");
+    nonfoodPart=nonfoodItems.filter(function(it){return it.price;}).map(function(it){ return encodeURIComponent(it.name)+"~"+encodeURIComponent(String(it.price).trim())+"~"+encodeURIComponent(String(it.caseQty)); }).join("|");
+    if(!foodPart && !nonfoodPart) return base+"#order-"+slug;
+    var compact2="F|"+foodPart+"|"+nonfoodPart;
+    return base+"#order-"+slug+":"+b64urlEncode(compact2);
   }
-  return null;
 }
 function copyOrderLinkFor(catName, slug, btnEl){
-  var base=getOrderLinkBase();
-  var startTab=isNonFoodAdmin() ? "nonfood" : "food";
   var oldText=btnEl.textContent;
-  btnEl.textContent="Reading FOOD + NON FOOD...";
-  var first=readLiveRates(catName)||[];
-  var otherTab=startTab==="food"?"nonfood":"food";
-  var otherBtn=findAdminTabButton(otherTab);
-  function finish(foodItems, nonfoodItems){
-    foodItems=foodItems||[]; nonfoodItems=nonfoodItems||[];
-    var baseNames=(ORDER_DATA.ws||[]).map(function(it){return it.name});
-    var foodPairs=[];
-    foodItems.forEach(function(it){ var bi=baseNames.indexOf(it.name); if(bi>=0 && it.price) foodPairs.push([bi, it.price]); });
-    var nonfood=nonfoodItems.filter(function(it){ return it.price; });
-    if(!foodPairs.length && !nonfood.length){
-      btnEl.textContent=oldText;
-      alert("No RATE filled for "+catName+" in FOOD or NON FOOD yet.\n\nFill the RATE column for "+catName+" first, then tap Copy Order Link again.");
-      return;
-    }
-    var enc=b64urlEncode(JSON.stringify({label:catName, foodPairs:foodPairs, nonfood:nonfood}));
-    var full=base+"#order-"+slug+":"+enc;
-    var done=function(){ btnEl.textContent="Copied ✓  ("+catName+")"; setTimeout(function(){btnEl.textContent=oldText;},1600); };
-    if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(full).then(done).catch(function(){ prompt("Copy this order link:",full); done(); }); }
-    else { prompt("Copy this order link:",full); done(); }
+  // Use cache (filled while you browsed FOOD / NON FOOD). No tab switch, no blink.
+  var foodItems=CACHE.food[catName]||[];
+  var nonfoodItems=CACHE.nonfood[catName]||[];
+  // If cache has nothing for this category, read the tab you are on right now.
+  if(!foodItems.length && !nonfoodItems.length){
+    var now=readLiveRates(catName);
+    if(isNonFoodAdmin()) nonfoodItems=now; else foodItems=now;
   }
-  if(!otherBtn){ finish(startTab==="food"?first:[], startTab==="nonfood"?first:[]); return; }
-  otherBtn.click();
-  setTimeout(function(){
-    var second=readLiveRates(catName)||[];
-    var backBtn=findAdminTabButton(startTab);
-    if(backBtn) backBtn.click();
-    setTimeout(function(){
-      var foodItems=startTab==="food"?first:second;
-      var nonfoodItems=startTab==="nonfood"?first:second;
-      finish(foodItems, nonfoodItems);
-    }, 500);
-  }, 700);
+  if(!foodItems.filter(function(i){return i.price;}).length && !nonfoodItems.filter(function(i){return i.price;}).length){
+    alert("No RATE filled for "+catName+" in FOOD or NON FOOD yet.\n\nFill the RATE column for "+catName+" first, then tap Copy Order Link again.");
+    return;
+  }
+  var full=buildShortLink(catName, slug, foodItems, nonfoodItems);
+  var done=function(){ btnEl.textContent="Copied ✓  ("+catName+")"; setTimeout(function(){btnEl.textContent=oldText;},1600); };
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(full).then(done).catch(function(){ prompt("Copy this order link:",full); done(); }); }
+  else { prompt("Copy this order link:",full); done(); }
 }
 function tick(){
-  // ONE button per category, in OUR OWN panel outside React. React can never duplicate it.
-  // 1) Remove any old injected buttons inside React (from earlier versions) - they are the duplicates.
   [].slice.call(document.querySelectorAll(".order-mini-btn")).forEach(function(ob){ ob.remove(); });
   var panel=document.getElementById("admin-order-panel");
   var btnsBox=document.getElementById("admin-order-btns");
-  var isLogin=(document.body.innerText||"").indexOf("PRICE LIST MANAGER")>=0 && (document.body.innerText||"").indexOf("WHATSAPP SHARE")<0;
+  var bodyTxt=document.body.innerText||"";
+  var isLogin=bodyTxt.indexOf("PRICE LIST MANAGER")>=0 && bodyTxt.indexOf("WHATSAPP SHARE")<0;
   var orderOpen=document.getElementById("order-view") && document.getElementById("order-view").classList.contains("open");
   if(isLogin || orderOpen){ if(panel && panel.style.display!=="none") panel.style.display="none"; return; }
-  // 2) Collect categories from the Preview buttons (works for new categories too)
   var cats={};
   [].slice.call(document.querySelectorAll("button")).forEach(function(b){
     var txt=(b.innerText||"");
@@ -1655,16 +1642,27 @@ function tick(){
     cats[catSlug(catName)]=catName;
   });
   var slugs=Object.keys(cats);
-  if(!slugs.length){ if(panel && panel.style.display!=="none") panel.style.display="none"; return; }
+  var noteEl=document.getElementById("admin-order-note");
+  if(!slugs.length){
+    if(isNonFoodAdmin()){
+      if(panel) panel.style.display="block";
+      if(noteEl){ noteEl.style.display="block"; noteEl.textContent="⚠ NON FOOD has NO categories yet, so NON FOOD items have no RATE. Tap 'Add New Category' above and create WS, WS MAIN, WHOLESALE (same names as FOOD), then fill their RATEs. Until then, customer NON FOOD will be empty."; }
+      var bb=document.getElementById("admin-order-btns"); if(bb) bb.innerHTML="";
+      return;
+    }
+    if(panel && panel.style.display!=="none") panel.style.display="none"; return;
+  }
+  if(noteEl) noteEl.style.display="none";
   if(panel && panel.style.display!=="block") panel.style.display="block";
-  // 3) Exactly one button per slug in OUR panel: add missing, remove stale
+  cacheCurrentTab(cats);
   var existing={};
   [].slice.call(btnsBox.querySelectorAll("button")).forEach(function(ob){
     var s=ob.getAttribute("data-order-cat");
     if(!cats[s]){ ob.remove(); return; }
     if(existing[s]){ ob.remove(); return; }
     existing[s]=ob;
-    var want="📋 Copy Order Link  ("+cats[s]+")"; if(ob.textContent!==want) ob.textContent=want;
+    var want="📋 Copy Order Link  ("+cats[s]+")";
+    if(ob.textContent!==want && ob.textContent.indexOf("Copied")<0 && ob.textContent.indexOf("Reading")<0) ob.textContent=want;
   });
   slugs.forEach(function(slug){
     if(existing[slug]) return;
@@ -1678,30 +1676,45 @@ function tick(){
     btnsBox.appendChild(ob);
   });
 }
-setInterval(tick, 800); // NO MutationObserver: it + tick() mutating DOM = infinite loop that freezes clicks
-/* --- Customer direct link: #order-<slug>[:data] opens order view, no login --- */
+setInterval(tick, 800);
+function parseOrderHash(){
+  var h=(location.hash||"").replace(/^#/,"");
+  if(h.indexOf("order-")===0){ var rest=h.slice("order-".length); }
+  else {
+    var q=(location.search||"").replace(/^\?/,"");
+    var m=q.match(/(?:^|&)order=([^&]+)/);
+    if(!m) return null;
+    var rest=decodeURIComponent(m[1]);
+  }
+  var ci=rest.indexOf(":");
+  if(ci>=0) return {slug:rest.slice(0,ci), enc:rest.slice(ci+1)};
+  return {slug:rest, enc:""};
+}
 (function(){
   var parsed=parseOrderHash();
   if(!parsed) return;
   var slug=parsed.slug;
   if(parsed.enc){
     try{
-      var decoded=JSON.parse(b64urlDecode(parsed.enc));
+      var decoded=b64urlDecode(parsed.enc);
+      var parts=decoded.split("|");
+      var mode=parts[0]||"D";
+      var foodPart=parts[1]||"", nonfoodPart=parts[2]||"";
       var base=ORDER_DATA.ws||[];
       var foodItems=[];
-      var pairs=decoded.foodPairs||decoded.pairs||[];
-      pairs.forEach(function(pair){
-        var it=base[pair[0]];
-        if(it && pair[1]) foodItems.push({name:it.name, caseQty:it.caseQty, price:pair[1]});
-      });
-      if(!foodItems.length && decoded.rates){
-        foodItems=base.map(function(it,i){ return {name:it.name, caseQty:it.caseQty, price:decoded.rates[i]||""}; }).filter(function(it){ return it.price!==""; });
+      if(mode==="D"){
+        var emb=ORDER_DATA[slug]||[];
+        foodItems=emb.map(function(it){ return {name:it.name, caseQty:it.caseQty, price:it.price}; });
+        if(foodPart){ foodPart.split(",").forEach(function(pair){ var kv=pair.split(":"); var idx=parseInt(kv[0]); if(foodItems[idx]) foodItems[idx].price=decodeURIComponent(kv[1]||""); }); }
+      } else {
+        if(foodPart){ foodPart.split(",").forEach(function(pair){ var kv=pair.split(":"); var idx=parseInt(kv[0]); var it=base[idx]; if(it) foodItems.push({name:it.name, caseQty:it.caseQty, price:decodeURIComponent(kv[1]||"")}); }); }
       }
-      var nonfoodItems=decoded.nonfood||[];
+      var nonfoodItems=[];
+      if(nonfoodPart){ nonfoodPart.split("|").forEach(function(chunk){ var pp=chunk.split("~"); if(pp.length>=3) nonfoodItems.push({name:decodeURIComponent(pp[0]), price:decodeURIComponent(pp[1]), caseQty:decodeURIComponent(pp[2])}); }); }
       if(foodItems.length || nonfoodItems.length){
         ORDER_DATA[slug]=foodItems;
         ORDER_NONFOOD_DATA[slug]=nonfoodItems;
-        LABELS[slug]=decoded.label||slug;
+        LABELS[slug]=LABELS[slug]||slug;
         COLORS[slug]=COLORS[slug]||"#d8f0df";
       }
     }catch(e){}
