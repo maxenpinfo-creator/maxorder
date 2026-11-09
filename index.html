@@ -148,7 +148,7 @@ document.getElementById("testBtn").onclick=async()=>{
   if(!db){ diag("❌ No Firebase connection.\n"+(appErr||"Config not pasted or SDK failed.")); return; }
   diag("⏳ Testing… writing a test doc, then reading it back…");
   try{
-    const ref=doc(db,"priceapp_categories","__test__");
+    const ref=doc(db,"priceapp_categories","connection_test");
     await setDoc(ref,{names:["WS"], _test:Date.now()});
     const snap=await getDoc(ref);
     if(snap.exists()){ await deleteDoc(ref); diag("✅ CONNECTED! Firestore read + write worked.\nprojectId = "+firebaseConfig.projectId+"\n\nNow: Login (blank username, 2883) → Load 44 FOOD items."); }
