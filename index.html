@@ -1725,100 +1725,88 @@ function parseOrderHash(){
 })();
 })();
 </script>
-<!-- ===== CLOUD DATABASE LAYER (added, does NOT change existing working code) ===== -->
-<!-- How it works: your existing Copy button still copies the long link. This layer saves that link's data -->
-<!-- to Firestore under a 6-char ID, then replaces the clipboard with a SHORT cloud link: -->
-<!--   #order-ws:cloud:Ab3x9z   (always short, no prices in link) -->
-<!-- Customer opens short link -> this layer fetches the full data from Firestore -> reloads with full link -> -->
-<!-- your existing order page decodes it exactly as before. If Cloud is offline, original link still works. -->
+<!-- ===== CLOUD DATABASE LAYER v2 (appended only, does NOT change existing code) ===== -->
+<!-- FIX for long link after CSV: v1 tried to READ clipboard back (browser blocks it). -->
+<!-- v2 INTERCEPTS navigator.clipboard.writeText: when your existing Copy button writes a long -->
+<!-- #order-... link, v2 saves its data to Firestore first, then writes a SHORT cloud link instead. -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
 (function(){
   var CFG={apiKey:"AIzaSyDNIFq8lEMCn3hJi2MULjJUY_38V4E6uAk",authDomain:"maxorder-f72c6.firebaseapp.com",projectId:"maxorder-f72c6",storageBucket:"maxorder-f72c6.firebasestorage.app",messagingSenderId:"54241516891",appId:"1:54241516891:web:872dccf89541ec53fe0e7e"};
-  var pill=null;
+  var pill=null, db=null, cloudReady=false;
   function setPill(txt,bg){ if(!pill) return; pill.textContent=txt; pill.style.background=bg||"#111"; }
   function makePill(){
     pill=document.createElement("div");
     pill.id="cloud-pill";
     pill.style.cssText="position:fixed;top:8px;right:8px;z-index:10000;background:#111;color:#fff;font-size:11px;font-weight:800;padding:6px 10px;border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,.3)";
-    pill.textContent="☁️ Cloud: connecting…";
+    pill.textContent="\u2601\uFE0F Cloud: connecting\u2026";
     document.body.appendChild(pill);
   }
-  // 1) CUSTOMER: short cloud link -> fetch full data -> reload with full link (existing code then decodes it)
+  function shortId(){ var c="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789", s=""; for(var i=0;i<6;i++) s+=c.charAt(Math.floor(Math.random()*c.length)); return s; }
   try{
     var h=(location.hash||"");
     var m=h.match(/#order-([^:]+):cloud:([A-Za-z0-9]+)/);
     if(m){
       var slug=m[1], sid=m[2];
-      // Show pill early so customer knows it is loading from cloud
-      document.addEventListener("DOMContentLoaded", function(){ makePill(); setPill("☁️ Loading prices from Cloud…","#111"); });
+      document.addEventListener("DOMContentLoaded", function(){ makePill(); setPill("\u2601\uFE0F Loading prices from Cloud\u2026","#111"); });
       var iv=setInterval(function(){
         if(window.firebase && firebase.firestore){
           clearInterval(iv);
           try{
             if(!firebase.apps.length) firebase.initializeApp(CFG);
-            var db=firebase.firestore();
-            db.collection("orderlinks").doc(sid).get().then(function(doc){
+            var d=firebase.firestore();
+            d.collection("orderlinks").doc(sid).get().then(function(doc){
               if(doc.exists){
                 var data=doc.data();
                 var full="#order-"+slug+(data.enc?":"+data.enc:"");
                 if(location.hash!==full){ location.hash=full; location.reload(); }
-              } else {
-                setPill("☁️ Cloud link not found — showing file prices","#b00");
-              }
-            }).catch(function(e){ setPill("☁️ Cloud offline — showing file prices","#b00"); });
-          }catch(e){ setPill("☁️ Cloud offline — showing file prices","#b00"); }
+              } else setPill("\u2601\uFE0F Cloud link not found \u2014 showing file prices","#b00");
+            }).catch(function(e){ setPill("\u2601\uFE0F Cloud offline \u2014 showing file prices","#b00"); });
+          }catch(e){ setPill("\u2601\uFE0F Cloud offline \u2014 showing file prices","#b00"); }
         }
       }, 200);
-      // If Firebase CDN does not load in 6s, let original page continue with file prices
       setTimeout(function(){ clearInterval(iv); }, 6000);
-      return; // do not run admin hook on a cloud customer link
+      return;
     }
   }catch(e){}
-  // 2) ADMIN: hook existing Copy buttons -> save their long link to Cloud -> replace clipboard with SHORT cloud link
   document.addEventListener("DOMContentLoaded", function(){
     makePill();
-    if(!window.firebase){ setPill("☁️ Cloud: SDK failed to load — original links still work","#b00"); return; }
+    if(!window.firebase){ setPill("\u2601\uFE0F Cloud: SDK failed \u2014 original links still work","#b00"); return; }
     try{
       if(!firebase.apps.length) firebase.initializeApp(CFG);
-      var db=firebase.firestore();
-      setPill("☁️ Cloud: connected (maxorder-f72c6)","#1a7a2e");
-      // Test write once (silent) to prove Firestore works
+      db=firebase.firestore();
+      cloudReady=true;
+      setPill("\u2601\uFE0F Cloud: connected \u2014 Copy will give SHORT link","#1a7a2e");
       db.collection("orderlinks").doc("connection_test").set({ok:true, at:Date.now()}).then(function(){
         return db.collection("orderlinks").doc("connection_test").delete();
       }).catch(function(e){
         var msg=String(e.message||e);
-        if(msg.indexOf("PERMISSION")>=0) setPill("☁️ Cloud: RULES block write — set allow read, write: if true;","#b00");
-        else if(msg.indexOf("NOT_FOUND")>=0) setPill("☁️ Cloud: Firestore DB not created yet","#b00");
-        else setPill("☁️ Cloud: "+msg.slice(0,60),"#b00");
+        if(msg.indexOf("PERMISSION")>=0) setPill("\u2601\uFE0F Cloud: RULES block write \u2014 set allow read, write: if true;","#b00");
+        else if(msg.indexOf("NOT_FOUND")>=0) setPill("\u2601\uFE0F Cloud: Firestore DB not created yet","#b00");
+        else { cloudReady=false; setPill("\u2601\uFE0F Cloud: "+msg.slice(0,60),"#b00"); }
       });
-      var btns=document.getElementById("admin-order-btns");
-      if(btns){
-        btns.addEventListener("click", function(ev){
-          var btn=ev.target.closest("button"); if(!btn) return;
-          // Let original Copy handler run first, then read what it copied
-          setTimeout(async function(){
-            try{
-              var copied=await navigator.clipboard.readText();
-              if(!copied || copied.indexOf("#order-")===-1) return;
-              var parts=copied.split("#order-"); var base=parts[0]; var rest=parts[1]||"";
-              var ci=rest.indexOf(":"); var slug=ci>=0?rest.slice(0,ci):rest; var enc=ci>=0?rest.slice(ci+1):"";
-              if(!enc) return; // already short (no changed prices) - nothing to save to cloud
-              var sid=""; var chars="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
-              for(var i=0;i<6;i++) sid+=chars.charAt(Math.floor(Math.random()*chars.length));
-              await db.collection("orderlinks").doc(sid).set({slug:slug, enc:enc, at:Date.now(), label:btn.textContent||""});
-              await db.collection("orderlinks").doc("latest-"+slug).set({slug:slug, enc:enc, at:Date.now(), sid:sid});
-              var shortLink=base+"#order-"+slug+":cloud:"+sid;
-              await navigator.clipboard.writeText(shortLink);
-              setPill("☁️ Saved to Cloud ✓ — SHORT cloud link copied ("+shortLink.length+" chars)","#1a7a2e");
-              // Update the button text briefly (does not change its working code)
-              var old=btn.textContent; btn.textContent="Copied SHORT Cloud ✓"; setTimeout(function(){ btn.textContent=old; }, 1800);
-            }catch(e){ setPill("☁️ Cloud save failed — long link still in clipboard","#b00"); }
-          }, 600);
-        });
+    }catch(e){ setPill("\u2601\uFE0F Cloud: "+String(e.message||e).slice(0,60),"#b00"); return; }
+    var origWrite = navigator.clipboard.writeText.bind(navigator.clipboard);
+    navigator.clipboard.writeText = async function(text){
+      try{
+        if(typeof text==="string" && text.indexOf("#order-")>=0 && text.indexOf(":cloud:")===-1 && cloudReady && db){
+          var parts=text.split("#order-"); var base=parts[0]; var rest=parts[1]||"";
+          var ci=rest.indexOf(":"); var slug=ci>=0?rest.slice(0,ci):rest; var enc=ci>=0?rest.slice(ci+1):"";
+          if(enc && enc.length>20){
+            var sid=shortId();
+            await db.collection("orderlinks").doc(sid).set({slug:slug, enc:enc, at:Date.now()});
+            await db.collection("orderlinks").doc("latest-"+slug).set({slug:slug, enc:enc, at:Date.now(), sid:sid});
+            var shortLink=base+"#order-"+slug+":cloud:"+sid;
+            setPill("\u2601\uFE0F Saved to Cloud \u2713 \u2014 SHORT link copied ("+shortLink.length+" chars, was "+text.length+")","#1a7a2e");
+            return origWrite(shortLink);
+          }
+        }
+      }catch(e){
+        setPill("\u2601\uFE0F Cloud save failed \u2014 long link copied instead","#b00");
       }
-    }catch(e){ setPill("☁️ Cloud: "+String(e.message||e).slice(0,60),"#b00"); }
+      return origWrite(text);
+    };
   });
 })();
 </script>
