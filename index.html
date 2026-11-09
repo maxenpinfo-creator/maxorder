@@ -1578,34 +1578,17 @@ function getOrderLinkBase(){
    NON FOOD: only its items, compact name~price~caseQty */
 function buildShortLink(catName, slug, foodItems, nonfoodItems){
   var base=getOrderLinkBase();
-  var embedded=ORDER_DATA[slug];
-  var isOld=!!embedded;
-  var foodPart="", nonfoodPart="";
-  if(isOld){
-    var diffs=[];
-    var embMap={}; embedded.forEach(function(it){ embMap[it.name]=String(it.price).trim(); });
-    foodItems.forEach(function(it){
-      if(it.price && embMap[it.name]!==undefined && embMap[it.name]!==String(it.price).trim()){
-        var bi=embedded.findIndex(function(e){ return e.name===it.name; });
-        if(bi>=0) diffs.push(bi+":"+encodeURIComponent(String(it.price).trim()));
-      }
-    });
-    foodPart=diffs.join(",");
-    var mode="D";
-    if(!foodPart && !nonfoodItems.filter(function(it){return it.price;}).length) return base+"#order-"+slug;
-    nonfoodPart=nonfoodItems.filter(function(it){return it.price;}).map(function(it){ return encodeURIComponent(it.name)+"~"+encodeURIComponent(String(it.price).trim())+"~"+encodeURIComponent(String(it.caseQty)); }).join("|");
-    var compact=mode+"|"+foodPart+"|"+nonfoodPart;
-    return base+"#order-"+slug+":"+b64urlEncode(compact);
-  } else {
-    var baseNames=(ORDER_DATA.ws||[]).map(function(it){return it.name});
-    var full=[];
-    foodItems.forEach(function(it){ var bi=baseNames.indexOf(it.name); if(bi>=0 && it.price) full.push(bi+":"+encodeURIComponent(String(it.price).trim())); });
-    foodPart=full.join(",");
-    nonfoodPart=nonfoodItems.filter(function(it){return it.price;}).map(function(it){ return encodeURIComponent(it.name)+"~"+encodeURIComponent(String(it.price).trim())+"~"+encodeURIComponent(String(it.caseQty)); }).join("|");
-    if(!foodPart && !nonfoodPart) return base+"#order-"+slug;
-    var compact2="F|"+foodPart+"|"+nonfoodPart;
-    return base+"#order-"+slug+":"+b64urlEncode(compact2);
+  // MODE A: send the FULL live list (all items from CSV), not just diffs.
+  // Old mode D dropped every new CSV item whose name was not in the embedded 44.
+  function encList(items){
+    return items.filter(function(it){ return it.price; }).map(function(it){
+      return encodeURIComponent(String(it.name).trim())+"~"+encodeURIComponent(String(it.price).trim())+"~"+encodeURIComponent(String(it.caseQty||"1"));
+    }).join("\n");
   }
+  var foodPart=encList(foodItems||[]);
+  var nonfoodPart=encList(nonfoodItems||[]);
+  if(!foodPart && !nonfoodPart) return base+"#order-"+slug;
+  return base+"#order-"+slug+":"+b64urlEncode("A|"+foodPart+"|"+nonfoodPart);
 }
 function copyOrderLinkFor(catName, slug, btnEl){
   var oldText=btnEl.textContent;
@@ -1701,16 +1684,29 @@ function parseOrderHash(){
       var mode=parts[0]||"D";
       var foodPart=parts[1]||"", nonfoodPart=parts[2]||"";
       var base=ORDER_DATA.ws||[];
-      var foodItems=[];
-      if(mode==="D"){
+      function decList(part){
+        var out=[];
+        if(!part) return out;
+        part.split("\n").forEach(function(line){
+          if(!line) return;
+          var pp=line.split("~");
+          if(pp.length>=3) out.push({name:decodeURIComponent(pp[0]), price:decodeURIComponent(pp[1]), caseQty:decodeURIComponent(pp[2])});
+        });
+        return out;
+      }
+      var foodItems=[], nonfoodItems=[];
+      if(mode==="A"){
+        foodItems=decList(foodPart);
+        nonfoodItems=decList(nonfoodPart);
+      } else if(mode==="D"){
         var emb=ORDER_DATA[slug]||[];
         foodItems=emb.map(function(it){ return {name:it.name, caseQty:it.caseQty, price:it.price}; });
         if(foodPart){ foodPart.split(",").forEach(function(pair){ var kv=pair.split(":"); var idx=parseInt(kv[0]); if(foodItems[idx]) foodItems[idx].price=decodeURIComponent(kv[1]||""); }); }
+        if(nonfoodPart){ nonfoodPart.split("|").forEach(function(chunk){ var pp=chunk.split("~"); if(pp.length>=3) nonfoodItems.push({name:decodeURIComponent(pp[0]), price:decodeURIComponent(pp[1]), caseQty:decodeURIComponent(pp[2])}); }); }
       } else {
         if(foodPart){ foodPart.split(",").forEach(function(pair){ var kv=pair.split(":"); var idx=parseInt(kv[0]); var it=base[idx]; if(it) foodItems.push({name:it.name, caseQty:it.caseQty, price:decodeURIComponent(kv[1]||"")}); }); }
+        if(nonfoodPart){ nonfoodPart.split("|").forEach(function(chunk){ var pp=chunk.split("~"); if(pp.length>=3) nonfoodItems.push({name:decodeURIComponent(pp[0]), price:decodeURIComponent(pp[1]), caseQty:decodeURIComponent(pp[2])}); }); }
       }
-      var nonfoodItems=[];
-      if(nonfoodPart){ nonfoodPart.split("|").forEach(function(chunk){ var pp=chunk.split("~"); if(pp.length>=3) nonfoodItems.push({name:decodeURIComponent(pp[0]), price:decodeURIComponent(pp[1]), caseQty:decodeURIComponent(pp[2])}); }); }
       if(foodItems.length || nonfoodItems.length){
         ORDER_DATA[slug]=foodItems;
         ORDER_NONFOOD_DATA[slug]=nonfoodItems;
