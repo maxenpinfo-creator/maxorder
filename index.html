@@ -1372,6 +1372,7 @@ Error generating stack: `+u.message+`
 #order-view .otop{position:sticky;top:0;z-index:5;background:#111;color:#fff;padding:10px}
 #order-view .otop h1{margin:0;font-size:17px}#order-view .otop p{margin:2px 0 0;font-size:11px;opacity:.75}
 #order-view .obadge{display:inline-block;background:#25D366;color:#111;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:900;margin-top:6px}
+#order-view .otabs{display:flex;gap:6px;padding:8px 10px 0}#order-view .otabs button{flex:1;border:1.5px solid #111;border-radius:10px;padding:9px 4px;font-size:13px;font-weight:900;cursor:pointer;background:#fff}#order-view .otabs button.on{background:#111;color:#fff}
 #order-view .osearch{display:flex;gap:6px;padding:8px 10px 0}#order-view .osearch input{flex:1;padding:9px 10px;border:1.5px solid #111;border-radius:10px;font-size:14px;font-weight:700;background:#fff}#order-view .osearch select{padding:9px 6px;border:1.5px solid #111;border-radius:10px;font-weight:800;font-size:12px;background:#fff}
 #order-view .ohint{padding:6px 10px 0;font-size:11px;color:#666}
 #order-view .olist{padding:6px 8px 8px}
@@ -1395,8 +1396,14 @@ Error generating stack: `+u.message+`
 #order-view .opreview{white-space:pre-wrap;background:#f6f6f6;border:1px solid #ddd;border-radius:9px;padding:9px;font-size:12px;font-weight:700;margin-top:9px}
 .order-mini-btn{margin-top:5px;width:100%;border:1px solid #111;border-radius:9px;padding:7px 4px;font-size:12px;font-weight:900;cursor:pointer;background:#25D366;color:#111}
 </style>
+<div id="admin-order-panel" style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:9999;background:#111;color:#fff;padding:10px 12px;box-shadow:0 -3px 12px rgba(0,0,0,.3)">
+<div style="max-width:900px;margin:0 auto">
+<div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:13px">🛒 ORDER LINKS — ONE PER CUSTOMER <span style="opacity:.6;font-weight:400">v13</span></b><span style="font-size:11px;opacity:.8">Tap = Copy link (FOOD + NON FOOD together)</span></div>
+<div id="admin-order-btns" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"></div>
+</div></div>
 <div id="order-view" aria-hidden="true"><div class="phone">
-<div class="otop"><h1 id="o-title">Order</h1><p>Price = RATE for this customer only &nbsp;•&nbsp; 1 Case = Case Qty pcs</p><span class="obadge" id="o-badge"></span></div>
+<div class="otop"><h1 id="o-title">Order</h1><p style="font-size:11px;opacity:.75">v13 — FOOD / NON FOOD in one page • Price = RATE for this customer only &nbsp;•&nbsp; 1 Case = Case Qty pcs</p><span class="obadge" id="o-badge"></span></div>
+<div class="otabs"><button id="o-tab-food" class="on">FOOD (<span id="o-count-food">0</span>)</button><button id="o-tab-nonfood">NON FOOD (<span id="o-count-nonfood">0</span>)</button></div>
 <div class="osearch"><input id="o-search" placeholder="🔍 Search item..." autocomplete="off"><select id="o-sort"><option value="az">A–Z</option><option value="priceAsc">₹ Low</option><option value="priceDesc">₹ High</option></select></div>
 <p class="ohint">Tap <b>− / +</b> to set qty, choose <b>CASE / PCS</b>, tap <b>ADD</b>. Cart is at the bottom.</p>
 <div class="olist" id="o-list"></div>
@@ -1410,6 +1417,10 @@ var ORDER_DATA={"ws": [{"name": "50*50 36/CBB -35", "caseQty": "36", "price": "2
 var LABELS={ws:"WS",wsmain:"WS MAIN",wholesale:"WHOLESALE"};
 var COLORS={ws:"#d8f0df",wsmain:"#ffeed6",wholesale:"#d9eef0"};
 var cat="ws", cart={}, qtyState={}, unitState={};
+var orderTab="food";
+var ORDER_NONFOOD_DATA={};
+function currentItems(){ return orderTab==="nonfood" ? (ORDER_NONFOOD_DATA[cat]||[]) : (ORDER_DATA[cat]||[]); }
+function refreshTabCounts(){ document.getElementById("o-count-food").textContent=(ORDER_DATA[cat]||[]).length; document.getElementById("o-count-nonfood").textContent=(ORDER_NONFOOD_DATA[cat]||[]).length; document.getElementById("o-tab-food").classList.toggle("on", orderTab==="food"); document.getElementById("o-tab-nonfood").classList.toggle("on", orderTab==="nonfood"); }
 function priceOf(it){var v=parseFloat(String(it.price).replace(/[^0-9.]/g,""));return isFinite(v)?v:0}
 function fmt(n){return "Rs."+n.toFixed(2)}
 function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;")}
@@ -1418,6 +1429,7 @@ function openOrder(c, fromCustomer){
   document.getElementById("o-title").textContent="🛒 Order — "+(LABELS[cat]||cat);
   document.getElementById("o-badge").textContent=(LABELS[cat]||cat)+" PRICE LIST ONLY";
   document.getElementById("o-search").value="";
+  orderTab="food"; refreshTabCounts();
   var v=document.getElementById("order-view"); v.classList.add("open"); v.setAttribute("aria-hidden","false");
   // Customer link: if they opened via #order-ws, keep hash. If admin opened it, set hash so Copy works.
   if(location.hash!=="#order-"+cat){ history.replaceState(null,"","#order-"+cat); }
@@ -1428,13 +1440,14 @@ function closeOrder(){
   document.getElementById("order-view").classList.remove("open");
   history.replaceState(null,"","#");
 }
-function filtered(){var q=(document.getElementById("o-search").value||"").toLowerCase();var arr=ORDER_DATA[cat].map(function(it,i){var o={name:it.name,caseQty:it.caseQty,price:it.price,_i:i};return o;}).filter(function(i){return i.name.toLowerCase().indexOf(q)>=0});var s=document.getElementById("o-sort").value;arr.sort(function(a,b){return s==="priceAsc"?priceOf(a)-priceOf(b):s==="priceDesc"?priceOf(b)-priceOf(a):a.name.localeCompare(b.name);});return arr;}
+function filtered(){var q=(document.getElementById("o-search").value||"").toLowerCase();var arr=currentItems().map(function(it,i){var o={name:it.name,caseQty:it.caseQty,price:it.price,_i:i};return o;}).filter(function(i){return i.name.toLowerCase().indexOf(q)>=0});var s=document.getElementById("o-sort").value;arr.sort(function(a,b){return s==="priceAsc"?priceOf(a)-priceOf(b):s==="priceDesc"?priceOf(b)-priceOf(a):a.name.localeCompare(b.name);});return arr;}
 function renderList(){
   var arr=filtered();
   document.getElementById("o-list").innerHTML=arr.map(function(it){
     var idx=it._i, price=priceOf(it), cq=parseInt(it.caseQty)||1;
-    var q=qtyState[idx]===undefined?1:qtyState[idx]; var u=unitState[idx]||"case";
-    var key=it.name+"|"+u; var inCart=cart[key]?cart[key].qty:0;
+    var qk=orderTab+"_"+idx;
+    var q=qtyState[qk]===undefined?1:qtyState[qk]; var u=unitState[qk]||"case";
+    var key=orderTab+"|"+it.name+"|"+u; var inCart=cart[key]?cart[key].qty:0;
     var lineAmt=u==="case"?q*cq*price:q*price;
     return '<div class="orow" data-idx="'+idx+'"><div class="or1"><div class="oname" title="'+esc(it.name)+'">'+esc(it.name)+'</div><div class="oprice"><b>'+fmt(price)+'</b><small>/ pc • '+fmt(price*cq)+' / case</small></div></div>'
     +'<div class="or2"><span class="ocq">Case: '+cq+' pcs</span><div class="oseg"><button data-act="unit" data-unit="case" class="'+(u==="case"?"on":"")+'">CASE</button><button data-act="unit" data-unit="pcs" class="'+(u==="pcs"?"on":"")+'">PCS</button></div>'
@@ -1445,27 +1458,34 @@ function renderList(){
 }
 function lineAmt(i){return i.unit==="case"?i.qty*i.caseQty*i.price:i.qty*i.price}
 function total(){return Object.values(cart).reduce(function(s,i){return s+lineAmt(i)},0)}
-function waText(){var name=document.getElementById("o-name").value.trim(),place=document.getElementById("o-place").value.trim();var L=[];L.push("*NEW ORDER - "+(LABELS[cat]||cat)+"*");if(name)L.push("*Name :-* "+name);if(place)L.push("*Place :-* "+place);L.push("--------------------");Object.values(cart).forEach(function(i){var pcs=i.unit==="case"?i.qty*i.caseQty:i.qty;L.push("*"+i.name+" :- "+i.qty+" "+i.unit.toUpperCase()+" ("+pcs+" pcs) x "+fmt(i.price)+" = "+fmt(lineAmt(i))+"*");});L.push("--------------------");L.push("*TOTAL AMOUNT :- "+fmt(total())+"*");L.push("Please confirm this order. Thank you!");return L.join("\n");}
+function waText(){var name=document.getElementById("o-name").value.trim(),place=document.getElementById("o-place").value.trim();var L=[];L.push("*NEW ORDER - "+(LABELS[cat]||cat)+"*");if(name)L.push("*Name :-* "+name);if(place)L.push("*Place :-* "+place);L.push("--------------------");
+var foodItems=Object.values(cart).filter(function(i){return i.tab!=="nonfood"}), nonfoodItems=Object.values(cart).filter(function(i){return i.tab==="nonfood"});
+function pushItems(arr){ arr.forEach(function(i){var pcs=i.unit==="case"?i.qty*i.caseQty:i.qty;L.push("*"+i.name+" :- "+i.qty+" "+i.unit.toUpperCase()+" ("+pcs+" pcs) x "+fmt(i.price)+" = "+fmt(lineAmt(i))+"*");}); }
+if(foodItems.length && nonfoodItems.length){ L.push("*FOOD*"); pushItems(foodItems); L.push("*NON FOOD*"); pushItems(nonfoodItems); }
+else { pushItems(foodItems); pushItems(nonfoodItems); }
+L.push("--------------------");L.push("*TOTAL AMOUNT :- "+fmt(total())+"*");L.push("Please confirm this order. Thank you!");return L.join("\n");}
 function renderCart(){
   document.getElementById("o-count").textContent="🧺 Cart: "+Object.keys(cart).length+" items";
   document.getElementById("o-total").textContent="TOTAL: "+fmt(total());
   var box=document.getElementById("o-cart");
   if(!Object.keys(cart).length){box.innerHTML="<p style='font-size:13px;color:#666'>Cart is empty.</p>";}
-  else{box.innerHTML=Object.entries(cart).map(function(pair,ci){var i=pair[1];return '<div class="ocitem" data-key="'+ci+'"><div class="n"><b>'+esc(i.name)+'</b><br><small>'+fmt(i.price)+' / pc • '+i.qty+' '+i.unit.toUpperCase()+' = '+(i.unit==="case"?i.qty*i.caseQty:i.qty)+' pcs</small></div><div class="omini"><button data-cact="minus">−</button><b>'+i.qty+'</b><button data-cact="plus">+</button></div><b style="min-width:78px;text-align:right">'+fmt(lineAmt(i))+'</b><button class="orm" data-cact="rm">✕</button></div>'}).join("");}
+  else{box.innerHTML=Object.entries(cart).map(function(pair,ci){var i=pair[1];return '<div class="ocitem" data-key="'+ci+'"><div class="n"><b>'+esc(i.name)+'</b> <small>['+(i.tab==="nonfood"?"NON FOOD":"FOOD")+']</small><br><small>'+fmt(i.price)+' / pc • '+i.qty+' '+i.unit.toUpperCase()+' = '+(i.unit==="case"?i.qty*i.caseQty:i.qty)+' pcs</small></div><div class="omini"><button data-cact="minus">−</button><b>'+i.qty+'</b><button data-cact="plus">+</button></div><b style="min-width:78px;text-align:right">'+fmt(lineAmt(i))+'</b><button class="orm" data-cact="rm">✕</button></div>'}).join("");}
   window._cartKeys=Object.keys(cart);
   document.getElementById("o-preview").textContent=Object.keys(cart).length?waText():"Add items to see WhatsApp preview here.";
 }
 document.getElementById("o-list").addEventListener("click",function(e){
   var btn=e.target.closest("[data-act]"); if(!btn)return;
-  var row=e.target.closest(".orow"); var idx=parseInt(row.dataset.idx); var it=ORDER_DATA[cat][idx];
-  var act=btn.dataset.act;
-  if(act==="unit"){unitState[idx]=btn.dataset.unit; renderList();}
-  if(act==="plus"){qtyState[idx]=(qtyState[idx]===undefined?1:qtyState[idx])+1; renderList();}
-  if(act==="minus"){var q=qtyState[idx]===undefined?1:qtyState[idx]; qtyState[idx]=Math.max(0,q-1); renderList();}
-  if(act==="add"){var q2=qtyState[idx]===undefined?1:qtyState[idx]; if(q2<=0){alert("Set qty first");return} var u=unitState[idx]||"case"; var key=it.name+"|"+u; if(cart[key])cart[key].qty+=q2; else cart[key]={name:it.name,unit:u,qty:q2,price:priceOf(it),caseQty:parseInt(it.caseQty)||1}; renderCart(); renderList(); }
+  var row=e.target.closest(".orow"); var idx=parseInt(row.dataset.idx); var it=currentItems()[idx];
+  var act=btn.dataset.act; var qk=orderTab+"_"+idx;
+  if(act==="unit"){unitState[qk]=btn.dataset.unit; renderList();}
+  if(act==="plus"){qtyState[qk]=(qtyState[qk]===undefined?1:qtyState[qk])+1; renderList();}
+  if(act==="minus"){var q=qtyState[qk]===undefined?1:qtyState[qk]; qtyState[qk]=Math.max(0,q-1); renderList();}
+  if(act==="add"){var q2=qtyState[qk]===undefined?1:qtyState[qk]; if(q2<=0){alert("Set qty first");return} var u=unitState[qk]||"case"; var key=orderTab+"|"+it.name+"|"+u; if(cart[key])cart[key].qty+=q2; else cart[key]={name:it.name,unit:u,qty:q2,price:priceOf(it),caseQty:parseInt(it.caseQty)||1,tab:orderTab}; renderCart(); renderList(); }
 });
+document.getElementById("o-tab-food").addEventListener("click",function(){ orderTab="food"; refreshTabCounts(); renderList(); });
+document.getElementById("o-tab-nonfood").addEventListener("click",function(){ orderTab="nonfood"; refreshTabCounts(); renderList(); });
 document.getElementById("o-list").addEventListener("change",function(e){
-  if(e.target.dataset.act==="qty"){var row=e.target.closest(".orow"); var idx=parseInt(row.dataset.idx); qtyState[idx]=Math.max(0,parseFloat(e.target.value)||0); renderList();}
+  if(e.target.dataset.act==="qty"){var row=e.target.closest(".orow"); var idx=parseInt(row.dataset.idx); qtyState[orderTab+"_"+idx]=Math.max(0,parseFloat(e.target.value)||0); renderList();}
 });
 document.getElementById("o-cart").addEventListener("click",function(e){
   var btn=e.target.closest("[data-cact]"); if(!btn)return; var row=e.target.closest(".ocitem"); var key=window._cartKeys[parseInt(row.dataset.key)]; if(!key)return;
@@ -1569,58 +1589,97 @@ function getOrderLinkBase(){
   }
   return here;
 }
+function isNonFoodAdmin(){ return (document.body.innerText||"").indexOf("Non Food Price List")>=0; }
+function findAdminTabButton(tab){
+  var btns=[].slice.call(document.querySelectorAll("button"));
+  for(var i=0;i<btns.length;i++){
+    var txt=(btns[i].innerText||"").trim();
+    if(tab==="food" && txt.indexOf("FOOD (")===0) return btns[i];
+    if(tab==="nonfood" && txt.indexOf("NON FOOD (")===0) return btns[i];
+  }
+  return null;
+}
 function copyOrderLinkFor(catName, slug, btnEl){
-  var isOld = (slug==="ws"||slug==="wsmain"||slug==="wholesale");
   var base=getOrderLinkBase();
-  var full;
-  if(isOld){
-    // Old categories: data is embedded in the file, short clean link is enough
-    full=base+"#order-"+slug;
-  } else {
-    var items=readLiveRates(catName);
-    if(!items || !items.length){
-      alert("Could not read "+catName+" from the price table.\n\nMake sure you are on the FOOD list and the table is visible, then try again.");
+  var startTab=isNonFoodAdmin() ? "nonfood" : "food";
+  var oldText=btnEl.textContent;
+  btnEl.textContent="Reading FOOD + NON FOOD...";
+  var first=readLiveRates(catName)||[];
+  var otherTab=startTab==="food"?"nonfood":"food";
+  var otherBtn=findAdminTabButton(otherTab);
+  function finish(foodItems, nonfoodItems){
+    foodItems=foodItems||[]; nonfoodItems=nonfoodItems||[];
+    var baseNames=(ORDER_DATA.ws||[]).map(function(it){return it.name});
+    var foodPairs=[];
+    foodItems.forEach(function(it){ var bi=baseNames.indexOf(it.name); if(bi>=0 && it.price) foodPairs.push([bi, it.price]); });
+    var nonfood=nonfoodItems.filter(function(it){ return it.price; });
+    if(!foodPairs.length && !nonfood.length){
+      btnEl.textContent=oldText;
+      alert("No RATE filled for "+catName+" in FOOD or NON FOOD yet.\n\nFill the RATE column for "+catName+" first, then tap Copy Order Link again.");
       return;
     }
-    // New category: only the RATEs need to travel in the link.
-    // Item names + Case Qty are the same list as WS, already in the file.
-    var baseNames=(ORDER_DATA.ws||[]).map(function(it){return it.name});
-    var pairs=[];
-    items.forEach(function(it){ var bi=baseNames.indexOf(it.name); if(bi>=0 && it.price) pairs.push([bi, it.price]); });
-    if(!pairs.length){ alert("No RATE filled for "+catName+" yet."); return; }
-    var enc=b64urlEncode(JSON.stringify({label:catName, pairs:pairs}));
-    full=base+"#order-"+slug+":"+enc;
+    var enc=b64urlEncode(JSON.stringify({label:catName, foodPairs:foodPairs, nonfood:nonfood}));
+    var full=base+"#order-"+slug+":"+enc;
+    var done=function(){ btnEl.textContent="Copied ✓  ("+catName+")"; setTimeout(function(){btnEl.textContent=oldText;},1600); };
+    if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(full).then(done).catch(function(){ prompt("Copy this order link:",full); done(); }); }
+    else { prompt("Copy this order link:",full); done(); }
   }
-  var done=function(){ var old=btnEl.textContent; btnEl.textContent="Copied ✓  ("+catName+")"; setTimeout(function(){btnEl.textContent=old;},1600); };
-  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(full).then(done).catch(function(){ prompt("Copy this order link:",full); done(); }); }
-  else { prompt("Copy this order link:",full); done(); }
+  if(!otherBtn){ finish(startTab==="food"?first:[], startTab==="nonfood"?first:[]); return; }
+  otherBtn.click();
+  setTimeout(function(){
+    var second=readLiveRates(catName)||[];
+    var backBtn=findAdminTabButton(startTab);
+    if(backBtn) backBtn.click();
+    setTimeout(function(){
+      var foodItems=startTab==="food"?first:second;
+      var nonfoodItems=startTab==="nonfood"?first:second;
+      finish(foodItems, nonfoodItems);
+    }, 500);
+  }, 700);
 }
 function tick(){
-  var btns=[].slice.call(document.querySelectorAll("button"));
-  btns.forEach(function(b){
+  // ONE button per category, in OUR OWN panel outside React. React can never duplicate it.
+  // 1) Remove any old injected buttons inside React (from earlier versions) - they are the duplicates.
+  [].slice.call(document.querySelectorAll(".order-mini-btn")).forEach(function(ob){ ob.remove(); });
+  var panel=document.getElementById("admin-order-panel");
+  var btnsBox=document.getElementById("admin-order-btns");
+  var isLogin=(document.body.innerText||"").indexOf("PRICE LIST MANAGER")>=0 && (document.body.innerText||"").indexOf("WHATSAPP SHARE")<0;
+  var orderOpen=document.getElementById("order-view") && document.getElementById("order-view").classList.contains("open");
+  if(isLogin || orderOpen){ if(panel && panel.style.display!=="none") panel.style.display="none"; return; }
+  // 2) Collect categories from the Preview buttons (works for new categories too)
+  var cats={};
+  [].slice.call(document.querySelectorAll("button")).forEach(function(b){
     var txt=(b.innerText||"");
     if(txt.indexOf("Preview & share list")<0) return;
     var catName=catNameFromPreviewBtn(b); if(!catName) return;
-    var slug=catSlug(catName);
-    var nxt=b.nextElementSibling;
-    if(nxt && nxt.classList && nxt.classList.contains("order-mini-btn")){
-      if(nxt.getAttribute("data-order-cat")===slug) return;
-      nxt.remove();
-    }
+    cats[catSlug(catName)]=catName;
+  });
+  var slugs=Object.keys(cats);
+  if(!slugs.length){ if(panel && panel.style.display!=="none") panel.style.display="none"; return; }
+  if(panel && panel.style.display!=="block") panel.style.display="block";
+  // 3) Exactly one button per slug in OUR panel: add missing, remove stale
+  var existing={};
+  [].slice.call(btnsBox.querySelectorAll("button")).forEach(function(ob){
+    var s=ob.getAttribute("data-order-cat");
+    if(!cats[s]){ ob.remove(); return; }
+    if(existing[s]){ ob.remove(); return; }
+    existing[s]=ob;
+    var want="📋 Copy Order Link  ("+cats[s]+")"; if(ob.textContent!==want) ob.textContent=want;
+  });
+  slugs.forEach(function(slug){
+    if(existing[slug]) return;
     var ob=document.createElement("button");
-    ob.type="button"; ob.className="order-mini-btn"; ob.setAttribute("data-order-cat",slug);
-    ob.textContent="📋 Copy Order Link  ("+catName+")";
-    ob.style.background="#25D366";
-    ob.addEventListener("click", function(ev){ ev.stopPropagation(); copyOrderLinkFor(catName, slug, ob); });
-    b.parentElement.insertBefore(ob, b.nextSibling);
+    ob.type="button"; ob.setAttribute("data-order-cat",slug);
+    ob.textContent="📋 Copy Order Link  ("+cats[slug]+")";
+    ob.style.cssText="border:0;border-radius:9px;padding:10px 12px;font-size:12px;font-weight:900;cursor:pointer;background:#25D366;color:#111";
+    (function(catName, s, btnEl){
+      btnEl.addEventListener("click", function(ev){ ev.stopPropagation(); copyOrderLinkFor(catName, s, btnEl); });
+    })(cats[slug], slug, ob);
+    btnsBox.appendChild(ob);
   });
 }
-setInterval(tick, 500);
-if(window.MutationObserver){
-  var mo=new MutationObserver(function(){ tick(); });
-  mo.observe(document.body, {childList:true, subtree:true});
-}
-/* --- Customer direct link: #order-<slug>[:rates] opens order view, no login --- */
+setInterval(tick, 800); // NO MutationObserver: it + tick() mutating DOM = infinite loop that freezes clicks
+/* --- Customer direct link: #order-<slug>[:data] opens order view, no login --- */
 (function(){
   var parsed=parseOrderHash();
   if(!parsed) return;
@@ -1629,21 +1688,25 @@ if(window.MutationObserver){
     try{
       var decoded=JSON.parse(b64urlDecode(parsed.enc));
       var base=ORDER_DATA.ws||[];
-      var items=[];
-      (decoded.pairs||[]).forEach(function(pair){
+      var foodItems=[];
+      var pairs=decoded.foodPairs||decoded.pairs||[];
+      pairs.forEach(function(pair){
         var it=base[pair[0]];
-        if(it && pair[1]) items.push({name:it.name, caseQty:it.caseQty, price:pair[1]});
+        if(it && pair[1]) foodItems.push({name:it.name, caseQty:it.caseQty, price:pair[1]});
       });
-      // Fallback for very old links that used position-based rates
-      if(!items.length && decoded.rates){
-        items=base.map(function(it,i){ return {name:it.name, caseQty:it.caseQty, price:decoded.rates[i]||""}; }).filter(function(it){ return it.price!==""; });
+      if(!foodItems.length && decoded.rates){
+        foodItems=base.map(function(it,i){ return {name:it.name, caseQty:it.caseQty, price:decoded.rates[i]||""}; }).filter(function(it){ return it.price!==""; });
       }
-      if(items.length){
-        ORDER_DATA[slug]=items;
+      var nonfoodItems=decoded.nonfood||[];
+      if(foodItems.length || nonfoodItems.length){
+        ORDER_DATA[slug]=foodItems;
+        ORDER_NONFOOD_DATA[slug]=nonfoodItems;
         LABELS[slug]=decoded.label||slug;
         COLORS[slug]=COLORS[slug]||"#d8f0df";
       }
     }catch(e){}
+  } else {
+    ORDER_NONFOOD_DATA[slug]=ORDER_NONFOOD_DATA[slug]||[];
   }
   if(ORDER_DATA[slug]){ setTimeout(function(){ openOrder(slug,true); }, 300); }
 })();
