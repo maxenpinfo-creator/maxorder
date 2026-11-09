@@ -35,15 +35,15 @@ td input{border:1px solid #bbb;padding:6px;font-size:13px}td input.rate{font-wei
 </style></head>
 <body>
 <div class="wrap" id="app">
-  <div id="cfgWarn" class="warn" style="display:none">⚠ Firebase not connected yet. Paste your Firebase web config in this file where it says <b>const firebaseConfig = {
-  apiKey: "AIzaSyDNIFq8lEMCn3hJi2MULjJUY_38V4E6uAk",
-  authDomain: "maxorder-f72c6.firebaseapp.com",
-  projectId: "maxorder-f72c6",
-  storageBucket: "maxorder-f72c6.firebasestorage.app",
-  messagingSenderId: "54241516891",
-  appId: "1:54241516891:web:872dccf89541ec53fe0e7e"
-};</b> (see steps below), upload this ONE file to GitHub Pages once, and you are done. No CSV ever again.</div>
+  <div id="cfgWarn" class="warn" style="display:none">⚠ Firebase not connected yet. Config must be pasted inside the &lt;script&gt; section, not in this warning box.</div>
   <div id="status" class="mut">Connecting to Firebase…</div>
+
+  <div id="diag" class="card" style="border-color:#b00">
+    <h2 style="margin:0">🔍 Connection Diagnostic</h2>
+    <div id="diagText" style="white-space:pre-wrap;font-size:13px;margin-top:8px">Checking…</div>
+    <div class="row" style="margin-top:10px"><button id="testBtn" class="green">Test Firebase Connection</button><button id="copyDiagBtn" class="ghost">Copy diagnostic text</button></div>
+  </div>
+
 
   <!-- LOGIN -->
   <div id="loginCard" class="card" style="max-width:420px;margin:30px auto">
@@ -104,19 +104,25 @@ import { getFirestore, collection, doc, getDocs, getDoc, setDoc, updateDoc, dele
    Firestore Rules (for this simple app, test mode is fine): allow read, write: if true;
    =================================================================== */
 const firebaseConfig = {
-  apiKey: "PASTE_YOUR_FIREBASE_CONFIG_HERE",
-  authDomain: "PASTE_YOUR_FIREBASE_CONFIG_HERE",
-  projectId: "PASTE_YOUR_FIREBASE_CONFIG_HERE",
-  storageBucket: "PASTE_YOUR_FIREBASE_CONFIG_HERE",
-  messagingSenderId: "PASTE_YOUR_FIREBASE_CONFIG_HERE",
-  appId: "PASTE_YOUR_FIREBASE_CONFIG_HERE"
+  apiKey: "AIzaSyDNIFq8lEMCn3hJi2MULjJUY_38V4E6uAk",
+  authDomain: "maxorder-f72c6.firebaseapp.com",
+  projectId: "maxorder-f72c6",
+  storageBucket: "maxorder-f72c6.firebasestorage.app",
+  messagingSenderId: "54241516891",
+  appId: "1:54241516891:web:872dccf89541ec53fe0e7e"
 };
 const CONFIG_OK = firebaseConfig.apiKey && !firebaseConfig.apiKey.includes("PASTE");
 document.getElementById("cfgWarn").style.display = CONFIG_OK ? "none" : "block";
-
-let db=null;
-if(CONFIG_OK){ try{ const app=initializeApp(firebaseConfig); db=getFirestore(app); document.getElementById("status").textContent="✅ Connected to Firebase"; }catch(e){ document.getElementById("status").textContent="❌ Firebase error: "+e.message; } }
-else { document.getElementById("status").textContent="⚠ Paste your Firebase config in this file to connect."; }
+function diag(msg){ const el=document.getElementById("diagText"); if(el) el.textContent=msg; document.getElementById("status").textContent=msg.split("\n")[0]; }
+let db=null, appErr="";
+if(CONFIG_OK){
+  try{
+    const app=initializeApp(firebaseConfig); db=getFirestore(app);
+    diag("✅ Firebase SDK loaded.\nprojectId = "+firebaseConfig.projectId+"\nOpened as = "+location.href+"\nTap 'Test Firebase Connection' below to check Firestore.");
+  }catch(e){ appErr=e.message; diag("❌ Firebase init failed: "+e.message); }
+} else {
+  diag("❌ Config NOT pasted in JavaScript yet. Paste it inside <script>, not in the warning box.");
+}
 
 /* ---------- Data model (Firestore) ----------
    Collection: priceapp_categories / doc {id:"food"|"nonfood"} => { names: ["WS","WS MAIN","WHOLESALE"] }
@@ -136,6 +142,26 @@ const labelForSlug=s=>{ for(const t of ["food","nonfood"]) for(const n of (categ
 const priceOf=v=>{ const x=parseFloat(String(v??"").replace(/[^0-9.]/g,"")); return isFinite(x)?x:0; };
 const fmt=n=>"Rs."+Number(n||0).toFixed(2);
 const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");
+
+
+document.getElementById("testBtn").onclick=async()=>{
+  if(!db){ diag("❌ No Firebase connection.\n"+(appErr||"Config not pasted or SDK failed.")); return; }
+  diag("⏳ Testing… writing a test doc, then reading it back…");
+  try{
+    const ref=doc(db,"priceapp_categories","__test__");
+    await setDoc(ref,{names:["WS"], _test:Date.now()});
+    const snap=await getDoc(ref);
+    if(snap.exists()){ await deleteDoc(ref); diag("✅ CONNECTED! Firestore read + write worked.\nprojectId = "+firebaseConfig.projectId+"\n\nNow: Login (blank username, 2883) → Load 44 FOOD items."); }
+    else diag("❌ Wrote but could not read back. Check Firestore Rules.");
+  }catch(e){
+    let hint=""; const m=String(e.message||e);
+    if(m.includes("NOT_FOUND")) hint="\n\n→ Firestore DATABASE NOT CREATED. Firebase Console → Build → Firestore Database → Create database → Start in test mode.";
+    else if(m.includes("PERMISSION")) hint="\n\n→ RULES BLOCK IT. Firestore → Rules → allow read, write: if true; → Publish.";
+    else if(m.includes("API key")) hint="\n\n→ API KEY WRONG.";
+    diag("❌ Test failed: "+m+hint);
+  }
+};
+document.getElementById("copyDiagBtn").onclick=async()=>{ const txt=document.getElementById("diagText").textContent; try{ await navigator.clipboard.writeText(txt); alert("Copied"); }catch(e){ prompt("Copy:",txt); } };
 
 /* ---------- Load categories + items (live) ---------- */
 async function loadCats(){
