@@ -1721,16 +1721,67 @@ function parseOrderHash(){
 })();
 })();
 </script>
-<!-- ===== CLOUD DATABASE LAYER v2 (appended only, does NOT change existing code) ===== -->
-<!-- FIX for long link after CSV: v1 tried to READ clipboard back (browser blocks it). -->
-<!-- v2 INTERCEPTS navigator.clipboard.writeText: when your existing Copy button writes a long -->
-<!-- #order-... link, v2 saves its data to Firestore first, then writes a SHORT cloud link instead. -->
+<!-- ===== CLOUD DATABASE LAYER v5 (appended only) ===== -->
+<!-- v5 fixes REFRESH: original openOrder() erases :cloud:ID from URL (replaceState to #order-ws). v5 saves the cloud ID before it is erased, blocks that erase, and restores it on refresh. -->
+<!-- Pill tells you the state: Editing... -> Saving... -> Auto-saved HH:MM:SS -->
+<!-- Copy still gives the SHORT cloud link, as before. -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
 (function(){
+  // ---- v5: PRESERVE CLOUD ID ACROSS REFRESH ----
+  // Original openOrder() does history.replaceState("", "#order-<slug>") which erases :cloud:ID.
+  // We capture the ID immediately (before openOrder runs), store it, and block the erase.
+  var _cloudSaved=null;
+  try{
+    var _h0=(location.hash||"");
+    var _m0=_h0.match(/#order-([^:]+):cloud:([A-Za-z0-9]+)/);
+    if(_m0){
+      _cloudSaved={slug:_m0[1], sid:_m0[2], at:Date.now()};
+      try{ sessionStorage.setItem("lastCloudOrder", JSON.stringify(_cloudSaved)); localStorage.setItem("lastCloudOrder", JSON.stringify(_cloudSaved)); }catch(e){}
+    }
+    // If this load has a BARE #order-<slug> (no data, no cloud) but we saved a cloud ID for this slug, restore it
+    var _bare=_h0.match(/^#order-([A-Za-z0-9_-]+)$/);
+    if(_bare && !_m0){
+      try{
+        var _saved=JSON.parse(sessionStorage.getItem("lastCloudOrder")||localStorage.getItem("lastCloudOrder")||"null");
+        if(_saved && _saved.slug===_bare[1] && _saved.sid && (Date.now()-_saved.at < 24*60*60*1000)){
+          _cloudSaved=_saved;
+          // Rewrite URL to cloud link BEFORE original code reads it, so it will fetch from Cloud again
+          history.replaceState(null,"", "#order-"+_saved.slug+":cloud:"+_saved.sid);
+        }
+      }catch(e){}
+    }
+    // Block original code from erasing the cloud ID: if it tries to replace #order-<slug>:cloud:<sid> with bare #order-<slug>, keep the cloud URL
+    var _origReplace=history.replaceState.bind(history);
+    history.replaceState=function(state,title,url){
+      try{
+        if(typeof url==="string" && url.indexOf("#order-")===0 && _cloudSaved){
+          var _bare2=url.match(/^#order-([A-Za-z0-9_-]+)$/);
+          if(_bare2 && _bare2[1]===_cloudSaved.slug){
+            url="#order-"+_cloudSaved.slug+":cloud:"+_cloudSaved.sid;
+          }
+        }
+      }catch(e){}
+      return _origReplace(state,title,url);
+    };
+    var _origPush=history.pushState.bind(history);
+    history.pushState=function(state,title,url){
+      try{
+        if(typeof url==="string" && url.indexOf("#order-")===0 && _cloudSaved){
+          var _bare3=url.match(/^#order-([A-Za-z0-9_-]+)$/);
+          if(_bare3 && _bare3[1]===_cloudSaved.slug) url="#order-"+_cloudSaved.slug+":cloud:"+_cloudSaved.sid;
+        }
+      }catch(e){}
+      return _origPush(state,title,url);
+    };
+  }catch(e){}
+
   var CFG={apiKey:"AIzaSyDNIFq8lEMCn3hJi2MULjJUY_38V4E6uAk",authDomain:"maxorder-f72c6.firebaseapp.com",projectId:"maxorder-f72c6",storageBucket:"maxorder-f72c6.firebasestorage.app",messagingSenderId:"54241516891",appId:"1:54241516891:web:872dccf89541ec53fe0e7e"};
   var pill=null, db=null, cloudReady=false;
+  var V4CACHE={food:{}, nonfood:{}};
+  var lastSavedJSON="", saveTimer=null, isSaving=false;
+  function nowTime(){ try{ return new Date().toLocaleTimeString([], {hour:"2-digit", minute:"2-digit", second:"2-digit"}); }catch(e){ return ""; } }
   function setPill(txt,bg){ if(!pill) return; pill.textContent=txt; pill.style.background=bg||"#111"; }
   function makePill(){
     pill=document.createElement("div");
@@ -1740,6 +1791,65 @@ function parseOrderHash(){
     document.body.appendChild(pill);
   }
   function shortId(){ var c="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789", s=""; for(var i=0;i<6;i++) s+=c.charAt(Math.floor(Math.random()*c.length)); return s; }
+  function isNonFoodAdmin(){ return (document.body.innerText||"").indexOf("WHATSAPP PRICE LIST \u00b7 NON FOOD")>=0 || document.body.innerText.indexOf("Non Food Price List")>=0; }
+  function readCurrentTab(){
+    try{
+      var tab=isNonFoodAdmin()?"nonfood":"food";
+      var ths=[].slice.call(document.querySelectorAll("table.price-table thead th"));
+      var cats=[];
+      ths.forEach(function(th){
+        var txt=(th.innerText||"").replace(/\s+/g," ").trim();
+        if(txt.indexOf("PROFIT")>=0){
+          var name=txt.split("\u00d7")[0].trim().split(" PROFIT")[0].trim();
+          if(name) cats.push(name);
+        }
+      });
+      if(!cats.length) return;
+      var rows=[].slice.call(document.querySelectorAll("table.price-table tbody tr"));
+      cats.forEach(function(catName, k){
+        var items=[];
+        rows.forEach(function(tr){
+          var cells=tr.querySelectorAll("td");
+          if(cells.length < 4 + k*3 + 3) return;
+          var name=(cells[0].innerText||"").trim(); if(!name) return;
+          if(name.indexOf("No ")===0 && name.indexOf("items yet")>=0) return;
+          var availCell=cells[1]; var sel=availCell.querySelector("select");
+          var avail=sel ? sel.value : (availCell.innerText||"");
+          var caseQty=(cells[3].innerText||"1").trim()||"1";
+          if(caseQty==="\u2014"||caseQty==="\u2013"||caseQty==="-") caseQty="1";
+          var rate=(cells[4 + k*3 + 2].innerText||"").trim();
+          if(rate==="\u2014"||rate==="\u2013"||rate==="-"||rate==="") rate="";
+          if(avail && avail.indexOf("Out of Stock")>=0) rate="";
+          items.push({name:name, caseQty:caseQty, price:rate});
+        });
+        if(items.length) V4CACHE[tab][catName]=items;
+      });
+    }catch(e){}
+  }
+  function scheduleSave(){
+    if(!cloudReady || !db) return;
+    setPill("\u2601\uFE0F Editing\u2026 not saved yet","#b8860b");
+    if(saveTimer) clearTimeout(saveTimer);
+    saveTimer=setTimeout(doAutoSave, 3000);
+  }
+  async function doAutoSave(){
+    if(!cloudReady || !db || isSaving) return;
+    try{
+      readCurrentTab();
+      var json=JSON.stringify(V4CACHE);
+      if(json===lastSavedJSON) { setPill("\u2601\uFE0F Auto-saved \u2713 "+nowTime(),"#1a7a2e"); return; }
+      isSaving=true;
+      setPill("\u2601\uFE0F Saving to Cloud\u2026","#111");
+      await db.collection("pricelist").doc("latest").set({food:V4CACHE.food, nonfood:V4CACHE.nonfood, updatedAt:Date.now(), updatedAtText:nowTime()});
+      lastSavedJSON=json;
+      isSaving=false;
+      setPill("\u2601\uFE0F Auto-saved \u2713 "+nowTime(),"#1a7a2e");
+    }catch(e){
+      isSaving=false;
+      setPill("\u2601\uFE0F Save failed \u2014 tap Copy to save","#b00");
+    }
+  }
+  // ---- CUSTOMER: short cloud link ----
   try{
     var h=(location.hash||"");
     var m=h.match(/#order-([^:]+):cloud:([A-Za-z0-9]+)/);
@@ -1766,6 +1876,7 @@ function parseOrderHash(){
       return;
     }
   }catch(e){}
+  // ---- ADMIN ----
   document.addEventListener("DOMContentLoaded", function(){
     makePill();
     if(!window.firebase){ setPill("\u2601\uFE0F Cloud: SDK failed \u2014 original links still work","#b00"); return; }
@@ -1773,15 +1884,17 @@ function parseOrderHash(){
       if(!firebase.apps.length) firebase.initializeApp(CFG);
       db=firebase.firestore();
       cloudReady=true;
-      setPill("\u2601\uFE0F Cloud: connected \u2014 Copy will give SHORT link","#1a7a2e");
-      db.collection("orderlinks").doc("connection_test").set({ok:true, at:Date.now()}).then(function(){
-        return db.collection("orderlinks").doc("connection_test").delete();
-      }).catch(function(e){
-        var msg=String(e.message||e);
-        if(msg.indexOf("PERMISSION")>=0) setPill("\u2601\uFE0F Cloud: RULES block write \u2014 set allow read, write: if true;","#b00");
-        else if(msg.indexOf("NOT_FOUND")>=0) setPill("\u2601\uFE0F Cloud: Firestore DB not created yet","#b00");
-        else { cloudReady=false; setPill("\u2601\uFE0F Cloud: "+msg.slice(0,60),"#b00"); }
-      });
+      setPill("\u2601\uFE0F Cloud: connected \u2014 edits auto-save","#1a7a2e");
+      // Load last auto-save once, so pill shows when last save was
+      db.collection("pricelist").doc("latest").get().then(function(doc){
+        if(doc.exists){ var d=doc.data(); if(d.food) V4CACHE.food=d.food; if(d.nonfood) V4CACHE.nonfood=d.nonfood; lastSavedJSON=JSON.stringify(V4CACHE); setPill("\u2601\uFE0F Cloud: connected \u2014 last auto-save "+(d.updatedAtText||""),"#1a7a2e"); }
+      }).catch(function(){});
+      // Watch edits: any click / typing / paste in the price table = editing
+      document.addEventListener("click", function(e){ if(e.target.closest && e.target.closest("table.price-table")) scheduleSave(); }, true);
+      document.addEventListener("input", function(e){ if(e.target.closest && e.target.closest("table.price-table")) scheduleSave(); }, true);
+      document.addEventListener("change", function(e){ if(e.target.closest && e.target.closest("table.price-table")) scheduleSave(); }, true);
+      // Periodic scan: catches CSV uploads + tab switches too
+      setInterval(function(){ readCurrentTab(); var json=JSON.stringify(V4CACHE); if(json!==lastSavedJSON) scheduleSave(); }, 5000);
     }catch(e){ setPill("\u2601\uFE0F Cloud: "+String(e.message||e).slice(0,60),"#b00"); return; }
     var origWrite = navigator.clipboard.writeText.bind(navigator.clipboard);
     navigator.clipboard.writeText = async function(text){
@@ -1793,17 +1906,18 @@ function parseOrderHash(){
             var sid=shortId();
             await db.collection("orderlinks").doc(sid).set({slug:slug, enc:enc, at:Date.now()});
             await db.collection("orderlinks").doc("latest-"+slug).set({slug:slug, enc:enc, at:Date.now(), sid:sid});
+            // Also flush auto-save now, so edits are saved even if you close the tab
+            await doAutoSave();
             var shortLink=base+"#order-"+slug+":cloud:"+sid;
-            setPill("\u2601\uFE0F Saved to Cloud \u2713 \u2014 SHORT link copied ("+shortLink.length+" chars, was "+text.length+")","#1a7a2e");
+            setPill("\u2601\uFE0F Saved to Cloud \u2713 \u2014 SHORT link copied ("+shortLink.length+" chars)","#1a7a2e");
             return origWrite(shortLink);
           }
         }
-      }catch(e){
-        setPill("\u2601\uFE0F Cloud save failed \u2014 long link copied instead","#b00");
-      }
+      }catch(e){ setPill("\u2601\uFE0F Cloud save failed \u2014 long link copied instead","#b00"); }
       return origWrite(text);
     };
   });
 })();
 </script>
+
 </body> </html>
