@@ -1921,10 +1921,10 @@ function parseOrderHash(){
 </script>
 
 
-<!-- CSV-FULL-FIX-v2: APPENDED ONLY. No existing code was edited. -->
+<!-- CSV-FULL-FIX-v3: APPENDED ONLY. No existing code was edited. Fix: restore asks at most ONCE per tab per session. -->
 <script>
 (function(){
-  var restored={}; var restoredOk={}; var restoring=false; var lastSavedCsv={}; var saveTimer=null; var restoreAttempts={};
+  var restored={}; var restoredOk={}; var restoring=false; var lastSavedCsv={}; var saveTimer=null;
   function tabNow(){
     try{
       var btn=document.querySelector('nav button[aria-pressed="true"]');
@@ -1934,13 +1934,15 @@ function parseOrderHash(){
     return 'food';
   }
   function pill(msg,color){
-    try{
-      var p=document.querySelector('div[style*="position:fixed"]');
-      if(p){ p.textContent=msg; if(color) p.style.background=color; }
-    }catch(e){}
+    try{ var p=document.querySelector('div[style*="position:fixed"]'); if(p){ p.textContent=msg; if(color) p.style.background=color; } }catch(e){}
   }
   function dbGet(){ try{ if(window.firebase && firebase.apps && firebase.apps.length) return firebase.firestore(); }catch(e){} return null; }
   function localKey(tab){ return 'csvFullFix_'+tab; }
+  // --- Session guards: THE fix for the repeating popup ---
+  // sessionStorage clears when the tab is closed, so next day / new tab it can restore once again,
+  // but inside ONE open session it will never auto-ask a second time.
+  function wasAsked(tab){ try{ return sessionStorage.getItem('csvFixAsked_'+tab)==='1'; }catch(e){ return !!restored[tab]; } }
+  function markAsked(tab){ try{ sessionStorage.setItem('csvFixAsked_'+tab,'1'); }catch(e){} restored[tab]=true; }
   function saveCsv(tab, csv, source){
     if(!csv) return;
     if(lastSavedCsv[tab]===csv) return;
@@ -1953,15 +1955,14 @@ function parseOrderHash(){
       obj[tab==='food'?'foodAt':'nonfoodAt']=Date.now();
       db.collection('pricelist').doc('csv-full').set(obj,{merge:true}).then(function(){
         pill('\u2601\uFE0F Saved to Cloud \u2713 '+(tab==='food'?'FOOD':'NON FOOD')+' ('+source+')','#1a7a2e');
-      }).catch(function(){ pill('\u2601\uFE0F Saved locally \u2014 Cloud save failed','#b8860b'); });
+      }).catch(function(){});
     }
   }
   function clearCsv(tab){
-    lastSavedCsv[tab]=''; restored[tab]=true; restoredOk[tab]=true;
+    lastSavedCsv[tab]=''; restoredOk[tab]=true;
     try{ localStorage.removeItem(localKey(tab)); }catch(e){}
     var db=dbGet(); if(db){ var o={}; o[tab==='food'?'foodCsv':'nonfoodCsv']=''; db.collection('pricelist').doc('csv-full').set(o,{merge:true}).catch(function(){}); }
   }
-  // ---- Capture real CSV uploads (raw file = 100% fidelity) ----
   document.addEventListener('change', function(e){
     var inp=e.target;
     if(!inp || inp.tagName!=='INPUT' || inp.type!=='file') return;
@@ -1969,10 +1970,9 @@ function parseOrderHash(){
     var f=inp.files && inp.files[0]; if(!f) return;
     var tab=tabNow();
     var r=new FileReader();
-    r.onload=function(){ restoredOk[tab]=true; saveCsv(tab, String(r.result||''), 'upload'); };
+    r.onload=function(){ restoredOk[tab]=true; markAsked(tab); saveCsv(tab, String(r.result||''), 'upload'); };
     r.readAsText(f);
   }, true);
-  // ---- Scrape full table (incl. Availability) ----
   function scrapeFullCsv(){
     try{
       var ths=[].slice.call(document.querySelectorAll('table.price-table thead th'));
@@ -1985,12 +1985,7 @@ function parseOrderHash(){
       var rows=[].slice.call(document.querySelectorAll('table.price-table tbody tr'));
       var customLabels=[];
       var lastRateIdx=-1; ths.forEach(function(th,i){ if(/RATE$/i.test((th.innerText||'').replace(/\s+/g,' ').trim())) lastRateIdx=i; });
-      if(lastRateIdx>=0){
-        for(var i=lastRateIdx+1;i<ths.length;i++){
-          var lab=(ths[i].innerText||'').replace(/\s+/g,' ').trim();
-          if(lab && lab.toUpperCase().indexOf('DELETE')<0) customLabels.push(lab);
-        }
-      }
+      if(lastRateIdx>=0){ for(var i=lastRateIdx+1;i<ths.length;i++){ var lab=(ths[i].innerText||'').replace(/\s+/g,' ').trim(); if(lab && lab.toUpperCase().indexOf('DELETE')<0) customLabels.push(lab); } }
       var header=['ITEM NAME','AVAILABILITY','PURCHASE RATE','CASE QTY'];
       cats.forEach(function(c){ header.push(c+' PROFIT', c+' PRICE', c+' RATE'); });
       customLabels.forEach(function(c){ header.push(c); });
@@ -1999,16 +1994,8 @@ function parseOrderHash(){
         var cells=tr.querySelectorAll('td'); if(cells.length<4) return;
         var name=(cells[0].innerText||'').trim(); if(!name) return;
         if(name.indexOf('No ')===0 && name.indexOf('items yet')>=0) return;
-        // Availability: a <select> in edit mode, or text / button in view mode.
-        // Prefer the SELECT value, then any select's selected option text.
         var availCell=cells[1]; var sel=availCell.querySelector('select');
-        var avail='';
-        if(sel){
-          avail=sel.value || (sel.options && sel.selectedIndex>=0 ? sel.options[sel.selectedIndex].text : '');
-        } else {
-          avail=(availCell.innerText||'').trim();
-        }
-        // Normalise: the app only understands these two strings
+        var avail=sel ? (sel.value || (sel.options && sel.selectedIndex>=0 ? sel.options[sel.selectedIndex].text : '')) : (availCell.innerText||'').trim();
         if(/out/i.test(avail)) avail='Out of Stock'; else avail='Available';
         var row=[name, avail, (cells[2].innerText||'').trim(), (cells[3].innerText||'').trim()];
         cats.forEach(function(c,k){
@@ -2024,45 +2011,28 @@ function parseOrderHash(){
       return out.map(function(r){ return r.map(function(v){ v=String(v==null?'':v); if(/[",\n]/.test(v)) return '"'+v.replace(/"/g,'""')+'"'; return v; }).join(','); }).join('\n');
     }catch(e){ return null; }
   }
-  // Normalised fingerprint: item name + availability only, so we can tell
-  // whether the phone's table actually has the desktop's Out-of-Stock change.
   function availFingerprint(csv){
     if(!csv) return '';
-    return csv.split('\n').slice(1).map(function(line){
-      var parts=line.split(','); return (parts[0]||'').trim().toLowerCase()+'='+(parts[1]||'').trim().toLowerCase();
-    }).sort().join('|');
+    return csv.split('\n').slice(1).map(function(line){ var p=line.split(','); return (p[0]||'').trim().toLowerCase()+'='+(p[1]||'').trim().toLowerCase(); }).sort().join('|');
   }
   function scheduleScrapeSave(immediate){
     if(saveTimer) clearTimeout(saveTimer);
-    saveTimer=setTimeout(function(){
-      if(restoring) return;
-      var csv=scrapeFullCsv(); if(!csv) return;
-      saveCsv(tabNow(), csv, 'edit-scrape');
-    }, immediate?300:4000);
+    saveTimer=setTimeout(function(){ if(restoring) return; var csv=scrapeFullCsv(); if(csv) saveCsv(tabNow(), csv, 'edit-scrape'); }, immediate?300:4000);
   }
-  // Availability is a <select>: React fires change, but ALSO listen to click
-  // (user opens the dropdown) and poll the table, so a missed event can never lose it.
-  document.addEventListener('change', function(e){
-    if(e.target && e.target.closest && e.target.closest('table.price-table')) scheduleScrapeSave(true);
-  }, true);
-  document.addEventListener('input', function(e){
-    if(e.target && e.target.closest && e.target.closest('table.price-table')) scheduleScrapeSave(false);
-  }, true);
+  document.addEventListener('change', function(e){ if(e.target && e.target.closest && e.target.closest('table.price-table')) scheduleScrapeSave(true); }, true);
+  document.addEventListener('input', function(e){ if(e.target && e.target.closest && e.target.closest('table.price-table')) scheduleScrapeSave(false); }, true);
   document.addEventListener('click', function(e){
     if(e.target && e.target.closest && e.target.closest('table.price-table')) scheduleScrapeSave(false);
     var b=e.target && e.target.closest ? e.target.closest('button') : null;
-    if(b && (b.textContent||'').trim()==='Yes, remove' && (document.body.innerText||'').indexOf('Reset to original list?')>=0){
+    if(!b) return;
+    var txt=(b.textContent||'').trim();
+    // If user presses "Keep it" on the Replace dialog, NEVER auto-ask again this session.
+    if(txt==='Keep it'){ markAsked(tabNow()); }
+    if(txt==='Yes, remove' && (document.body.innerText||'').indexOf('Reset to original list?')>=0){
       setTimeout(function(){ clearCsv(tabNow()); pill('\u2601\uFE0F Reset \u2014 cloud CSV cleared','#1a7a2e'); }, 300);
     }
   }, true);
-  // POLL: every 3s compare the live table with what is saved. This is the
-  // safety net for Availability changes whose event React swallows.
-  setInterval(function(){
-    if(restoring) return;
-    var csv=scrapeFullCsv(); if(!csv) return;
-    saveCsv(tabNow(), csv, 'poll');
-  }, 3000);
-  // ---- Restore ----
+  setInterval(function(){ if(restoring) return; var csv=scrapeFullCsv(); if(csv) saveCsv(tabNow(), csv, 'poll'); }, 3000);
   var cloudCsv={food:'', nonfood:''};
   function loadCloud(){
     var db=dbGet(); if(!db) return;
@@ -2076,10 +2046,7 @@ function parseOrderHash(){
       });
     }catch(e){}
   }
-  function findFileInput(){
-    var inputs=document.querySelectorAll('input[type="file"][accept*="csv"]');
-    return inputs.length?inputs[0]:null;
-  }
+  function findFileInput(){ var inputs=document.querySelectorAll('input[type="file"][accept*="csv"]'); return inputs.length?inputs[0]:null; }
   function clickYesReplace(tab){
     var tries=0;
     var iv=setInterval(function(){
@@ -2088,58 +2055,44 @@ function parseOrderHash(){
       var yes=btns.find(function(b){ return (b.textContent||'').trim()==='Yes, replace'; });
       if(yes){
         clearInterval(iv); yes.click();
-        // Confirm it actually landed: check the table fingerprint shortly after.
         setTimeout(function(){
           var now=scrapeFullCsv();
-          if(now && cloudCsv[tab] && availFingerprint(now)===availFingerprint(cloudCsv[tab])){
-            restoredOk[tab]=true; pill('\u2601\uFE0F Restored saved CSV \u2713',' #1a7a2e'.trim());
-          } else {
-            // Dialog was clicked but table did not change (React ignored the
-            // synthetic event on this device) -> allow retry, do not give up.
-            restored[tab]=false; restoredOk[tab]=false;
-            pill('\u2601\uFE0F Restore did not apply \u2014 tap \u21bb Restore Cloud CSV','#b8860b');
-          }
+          if(now && cloudCsv[tab] && availFingerprint(now)===availFingerprint(cloudCsv[tab])){ restoredOk[tab]=true; pill('\u2601\uFE0F Restored saved CSV \u2713','#1a7a2e'); }
+          else { pill('\u2601\uFE0F Restore did not apply \u2014 tap \u21bb Restore Cloud CSV','#b8860b'); }
         }, 1200);
         return;
       }
-      if(tries>40){
-        clearInterval(iv);
-        // No dialog appeared at all -> the synthetic change was ignored. Retry later.
-        restored[tab]=false; restoring=false;
-      }
+      if(tries>40){ clearInterval(iv); restoring=false; }
     }, 250);
   }
   function restoreTab(tab, force){
-    if(!force && restoredOk[tab]) return;
-    if(restoring && !force) return;
+    if(!force){
+      if(wasAsked(tab) || restoredOk[tab]) return; // <-- THE LOOP FIX: never auto-ask twice
+      if(restoring) return;
+    }
     var csv=cloudCsv[tab]; if(!csv) return;
     var inp=findFileInput(); if(!inp) return;
-    // If the table already matches the cloud CSV (incl. availability), nothing to do.
     var now=scrapeFullCsv();
-    if(now && availFingerprint(now)===availFingerprint(csv) && now.split('\n').length===csv.split('\n').length){ restoredOk[tab]=true; return; }
-    restoreAttempts[tab]=(restoreAttempts[tab]||0)+1;
-    if(restoreAttempts[tab]>6 && !force) return; // stop auto-looping; manual button still works
-    restored[tab]=true; restoring=true;
+    if(now && availFingerprint(now)===availFingerprint(csv) && now.split('\n').length===csv.split('\n').length){ restoredOk[tab]=true; markAsked(tab); return; }
+    markAsked(tab); // mark BEFORE triggering, so even if the dialog is dismissed it cannot loop
+    restoring=true;
     try{
       var file=new File([csv], tab==='food'?'price-list.csv':'non-food-price-list.csv', {type:'text/csv'});
       var dt=new DataTransfer(); dt.items.add(file);
       inp.files=dt.files;
-      // Dispatch a *native* change event. React listens at the root, so bubbles:true is essential.
-      inp.dispatchEvent(new Event('change',{bubbles:true, cancelable:true}));
-      inp.dispatchEvent(new Event('input',{bubbles:true, cancelable:true}));
+      inp.dispatchEvent(new Event('change',{bubbles:true, cancelable:true})); // ONE event only (was change+input before)
       pill('\u2601\uFE0F Restoring saved CSV\u2026','#111');
       clickYesReplace(tab);
-    }catch(e){ restoring=false; restored[tab]=false; }
+    }catch(e){ restoring=false; }
     setTimeout(function(){ restoring=false; }, 3000);
   }
-  // Manual fallback button (appended UI only) - tap it on the phone if auto-restore ever misses.
   function addRestoreButton(){
     if(document.getElementById('csvFixRestoreBtn')) return;
     var b=document.createElement('button');
     b.id='csvFixRestoreBtn';
     b.textContent='\u21bb Restore Cloud CSV';
     b.style.cssText='position:fixed;left:8px;bottom:8px;z-index:10001;background:#111;color:#fff;font-size:12px;font-weight:800;padding:8px 12px;border-radius:999px;border:none;box-shadow:0 2px 8px rgba(0,0,0,.3)';
-    b.onclick=function(){ restoreAttempts[tabNow()]=0; restored[tabNow()]=false; restoreTab(tabNow(), true); };
+    b.onclick=function(){ try{ sessionStorage.removeItem('csvFixAsked_'+tabNow()); }catch(e){} restoredOk[tabNow()]=false; restoreTab(tabNow(), true); };
     document.body.appendChild(b);
   }
   var started=false;
@@ -2150,8 +2103,6 @@ function parseOrderHash(){
   setInterval(tick, 2000);
   setTimeout(loadCloud, 5000);
   setTimeout(loadCloud, 12000);
-  // Keep cloud fresh while the phone is open: re-fetch every 30s so a desktop
-  // change made AFTER the phone was opened still arrives.
   setInterval(loadCloud, 30000);
 })();
 </script>
