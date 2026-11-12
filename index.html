@@ -1920,4 +1920,200 @@ function parseOrderHash(){
 })();
 </script>
 
+
+<!-- CSV-FULL-FIX-v1: APPENDED ONLY. No existing code was edited. Saves the FULL uploaded CSV (all columns) to Cloud + local backup, and restores it on next open by re-feeding it through the app's own Upload CSV flow. -->
+<script>
+(function(){
+  var FIX='CSV-FULL-FIX-v1';
+  var restored={}; var restoring=false; var lastSavedCsv={}; var saveTimer=null;
+  function tabNow(){
+    try{
+      var btn=document.querySelector('nav button[aria-pressed="true"]');
+      if(btn && /NON\s*FOOD/i.test(btn.textContent||'')) return 'nonfood';
+      if(btn && /FOOD/i.test(btn.textContent||'')) return 'food';
+    }catch(e){}
+    try{ if((document.body.innerText||'').indexOf('Non Food Price List')>=0) return 'nonfood'; }catch(e){}
+    return 'food';
+  }
+  function pill(msg,color){
+    try{
+      var p=document.querySelector('div[style*="position:fixed"]');
+      if(p){ p.textContent=msg; if(color) p.style.background=color; }
+    }catch(e){}
+  }
+  function dbGet(){
+    try{ if(window.firebase && firebase.apps && firebase.apps.length) return firebase.firestore(); }catch(e){}
+    return null;
+  }
+  function localKey(tab){ return 'csvFullFix_'+tab; }
+  function saveCsv(tab, csv, source){
+    if(!csv) return;
+    if(lastSavedCsv[tab]===csv) return;
+    lastSavedCsv[tab]=csv;
+    try{ localStorage.setItem(localKey(tab), JSON.stringify({csv:csv, at:Date.now(), source:source||''})); }catch(e){}
+    var db=dbGet();
+    if(db){
+      var obj={updatedAt:Date.now(), updatedAtText:new Date().toLocaleString()};
+      obj[tab==='food'?'foodCsv':'nonfoodCsv']=csv;
+      obj[tab==='food'?'foodAt':'nonfoodAt']=Date.now();
+      db.collection('pricelist').doc('csv-full').set(obj,{merge:true}).then(function(){
+        pill('\u2601\uFE0F CSV saved to Cloud \u2713 '+(tab==='food'?'FOOD':'NON FOOD'),'#1a7a2e');
+      }).catch(function(){ pill('\u2601\uFE0F CSV saved locally \u2014 Cloud save failed','#b8860b'); });
+    } else {
+      pill('\u2601\uFE0F CSV saved locally \u2014 Cloud not ready','#b8860b');
+    }
+  }
+  function clearCsv(tab){
+    lastSavedCsv[tab]=''; restored[tab]=true;
+    try{ localStorage.removeItem(localKey(tab)); }catch(e){}
+    var db=dbGet(); if(db){ var o={}; o[tab==='food'?'foodCsv':'nonfoodCsv']=''; db.collection('pricelist').doc('csv-full').set(o,{merge:true}).catch(function(){}); }
+  }
+  // ---- 1) Capture every real CSV upload, save the RAW file (100% fidelity) ----
+  document.addEventListener('change', function(e){
+    var inp=e.target;
+    if(!inp || inp.tagName!=='INPUT' || inp.type!=='file') return;
+    if(restoring) return;
+    var f=inp.files && inp.files[0]; if(!f) return;
+    var tab=tabNow();
+    var r=new FileReader();
+    r.onload=function(){ saveCsv(tab, String(r.result||''), 'upload'); };
+    r.readAsText(f);
+  }, true);
+  // ---- 2) Also capture manual cell edits: rebuild a full CSV from the visible table ----
+  function scrapeFullCsv(){
+    try{
+      var ths=[].slice.call(document.querySelectorAll('table.price-table thead th'));
+      var cats=[];
+      ths.forEach(function(th){
+        var txt=(th.innerText||'').replace(/\s+/g,' ').trim();
+        if(/PROFIT$/i.test(txt)){ var nm=txt.replace(/\s+PROFIT$/i,'').trim(); if(nm) cats.push(nm); }
+      });
+      if(!cats.length) return null;
+      var rows=[].slice.call(document.querySelectorAll('table.price-table tbody tr'));
+      var out=[];
+      // Header: use scraped category names; custom columns (after last category) taken from thead
+      var customLabels=[];
+      // thead ths after the last PROFIT/PRICE/RATE group are custom + action; action th is usually empty/last
+      var lastRateIdx=-1; ths.forEach(function(th,i){ if(/RATE$/i.test((th.innerText||'').replace(/\s+/g,' ').trim())) lastRateIdx=i; });
+      if(lastRateIdx>=0){
+        for(var i=lastRateIdx+1;i<ths.length;i++){
+          var lab=(ths[i].innerText||'').replace(/\s+/g,' ').trim();
+          if(lab && !/^\s*$/.test(lab) && lab.toUpperCase().indexOf('DELETE')<0) customLabels.push(lab);
+        }
+      }
+      var header=['ITEM NAME','AVAILABILITY','PURCHASE RATE','CASE QTY'];
+      cats.forEach(function(c){ header.push(c+' PROFIT', c+' PRICE', c+' RATE'); });
+      customLabels.forEach(function(c){ header.push(c); });
+      out.push(header);
+      rows.forEach(function(tr){
+        var cells=tr.querySelectorAll('td'); if(cells.length<4) return;
+        var name=(cells[0].innerText||'').trim(); if(!name) return;
+        if(name.indexOf('No ')===0 && name.indexOf('items yet')>=0) return;
+        var availCell=cells[1]; var sel=availCell.querySelector('select');
+        var avail=sel?sel.value:(availCell.innerText||'').trim();
+        var purchase=(cells[2].innerText||'').trim();
+        var caseQty=(cells[3].innerText||'').trim();
+        var row=[name, avail, purchase, caseQty];
+        cats.forEach(function(c,k){
+          row.push((cells[4+k*3]?cells[4+k*3].innerText:'').trim());
+          row.push((cells[5+k*3]?cells[5+k*3].innerText:'').trim());
+          row.push((cells[6+k*3]?cells[6+k*3].innerText:'').trim());
+        });
+        var base=4+cats.length*3;
+        for(var j=0;j<customLabels.length;j++){ row.push((cells[base+j]?cells[base+j].innerText:'').trim()); }
+        out.push(row);
+      });
+      if(out.length<2) return null;
+      return out.map(function(r){ return r.map(function(v){ v=String(v==null?'':v); if(/[",\n]/.test(v)) return '"'+v.replace(/"/g,'""')+'"'; return v; }).join(','); }).join('\n');
+    }catch(e){ return null; }
+  }
+  function scheduleScrapeSave(){
+    if(saveTimer) clearTimeout(saveTimer);
+    saveTimer=setTimeout(function(){
+      if(restoring) return;
+      var csv=scrapeFullCsv(); if(!csv) return;
+      // Only overwrite the stored CSV if it came from the same tab's table and differs.
+      // This keeps manual edits (price/purchase/profit/availability) persisted too.
+      var tab=tabNow(); saveCsv(tab, csv, 'edit-scrape');
+    }, 4000);
+  }
+  document.addEventListener('input', function(e){ if(e.target && e.target.closest && e.target.closest('table.price-table')) scheduleScrapeSave(); }, true);
+  document.addEventListener('change', function(e){ if(e.target && e.target.closest && e.target.closest('table.price-table')) scheduleScrapeSave(); }, true);
+  // ---- 3) Reset Data must clear the cloud CSV too, otherwise it comes back ----
+  document.addEventListener('click', function(e){
+    var b=e.target && e.target.closest ? e.target.closest('button') : null;
+    if(!b) return;
+    var txt=(b.textContent||'').trim();
+    if(txt==='Yes, remove'){
+      // Only when the dialog is the Reset dialog (not Delete item/category)
+      var dlg=document.body.innerText||'';
+      if(dlg.indexOf('Reset to original list?')>=0){ setTimeout(function(){ clearCsv(tabNow()); pill('\u2601\uFE0F Reset \u2014 cloud CSV cleared','#1a7a2e'); }, 300); }
+    }
+  }, true);
+  // ---- 4) Restore: re-feed saved CSV through the app's own Upload CSV input ----
+  var cloudCsv={food:'', nonfood:''};
+  function loadCloud(){
+    var db=dbGet(); if(!db) return;
+    db.collection('pricelist').doc('csv-full').get().then(function(doc){
+      if(doc.exists){ var d=doc.data()||{}; if(d.foodCsv) cloudCsv.food=d.foodCsv; if(d.nonfoodCsv) cloudCsv.nonfood=d.nonfoodCsv;
+        if(cloudCsv.food) lastSavedCsv.food=cloudCsv.food;
+        if(cloudCsv.nonfood) lastSavedCsv.nonfood=cloudCsv.nonfood;
+      }
+    }).catch(function(){});
+    // Local backup fills gaps if cloud is empty / offline
+    try{
+      ['food','nonfood'].forEach(function(tab){
+        var raw=localStorage.getItem(localKey(tab));
+        if(raw){ var o=JSON.parse(raw); if(o && o.csv && !cloudCsv[tab]){ cloudCsv[tab]=o.csv; lastSavedCsv[tab]=o.csv; } }
+      });
+    }catch(e){}
+  }
+  function findFileInput(){
+    var inputs=document.querySelectorAll('input[type="file"][accept*="csv"]');
+    return inputs.length?inputs[0]:null;
+  }
+  function clickYesReplace(){
+    var tries=0;
+    var iv=setInterval(function(){
+      tries++;
+      var btns=[].slice.call(document.querySelectorAll('button'));
+      var yes=btns.find(function(b){ return (b.textContent||'').trim()==='Yes, replace'; });
+      if(yes){ clearInterval(iv); yes.click(); pill('\u2601\uFE0F Restored saved CSV \u2713',' #1a7a2e'.trim()); return; }
+      if(tries>40) clearInterval(iv);
+    }, 250);
+  }
+  function restoreTab(tab){
+    if(restored[tab]) return;
+    var csv=cloudCsv[tab]; if(!csv) return;
+    var inp=findFileInput(); if(!inp) return;
+    // Don't restore over a list the user already changed this session (e.g. just uploaded)
+    restored[tab]=true;
+    restoring=true;
+    try{
+      var file=new File([csv], tab==='food'?'price-list.csv':'non-food-price-list.csv', {type:'text/csv'});
+      var dt=new DataTransfer(); dt.items.add(file);
+      inp.files=dt.files;
+      inp.dispatchEvent(new Event('change',{bubbles:true}));
+      inp.dispatchEvent(new Event('input',{bubbles:true}));
+      pill('\u2601\uFE0F Restoring saved CSV\u2026','#111');
+      clickYesReplace();
+    }catch(e){ restoring=false; }
+    setTimeout(function(){ restoring=false; }, 3000);
+  }
+  // Wait for login + Firebase, then restore current tab; watch tab switches for the other tab
+  var started=false;
+  function tick(){
+    if(!started && dbGet()){ started=true; loadCloud(); }
+    if(started && findFileInput()){
+      var t=tabNow();
+      if(cloudCsv[t]) restoreTab(t);
+    }
+  }
+  setInterval(tick, 1500);
+  // Also re-check cloud a little later (Firestore may init after this script)
+  setTimeout(loadCloud, 5000);
+  setTimeout(loadCloud, 12000);
+})();
+</script>
+
 </body> </html>
