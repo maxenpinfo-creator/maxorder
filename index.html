@@ -1615,7 +1615,7 @@ function tick(){
   var panel=document.getElementById("admin-order-panel");
   var btnsBox=document.getElementById("admin-order-btns");
   var bodyTxt=document.body.innerText||"";
-  var isLogin=bodyTxt.indexOf("PRICE LIST MANAGER")>=0 && bodyTxt.indexOf("WHATSAPP SHARE")<0;
+  var isLogin=bodyTxt.indexOf("PRICE LIST MANAGER")>=0 && bodyTxt.indexOf("WHATSAPP SHARE")<0 && !document.querySelector("table.price-table");
   var orderOpen=document.getElementById("order-view") && document.getElementById("order-view").classList.contains("open");
   if(isLogin || orderOpen){ if(panel && panel.style.display!=="none") panel.style.display="none"; return; }
   var cats={};
@@ -1625,6 +1625,15 @@ function tick(){
     var catName=catNameFromPreviewBtn(b); if(!catName) return;
     cats[catSlug(catName)]=catName;
   });
+  if(!Object.keys(cats).length){
+    [].slice.call(document.querySelectorAll("table.price-table thead th")).forEach(function(th){
+      var txt=(th.innerText||"").replace(/\s+/g," ").trim();
+      if(txt.indexOf("PROFIT")>=0){
+        var nm=txt.split("\u00d7")[0].trim().split(" PROFIT")[0].trim();
+        if(nm) cats[catSlug(nm)]=nm;
+      }
+    });
+  }
   var slugs=Object.keys(cats);
   var noteEl=document.getElementById("admin-order-note");
   if(!slugs.length){
@@ -2142,9 +2151,12 @@ function parseOrderHash(){
     var previewBtns=[].slice.call(document.querySelectorAll('button')).filter(function(b){
       return (b.innerText||'').indexOf('Preview & share list')>=0;
     });
-    if(!previewBtns.length) return;
-    var grid=previewBtns[0].parentElement;
+    var grid=previewBtns.length ? previewBtns[0].parentElement : null;
     var section=grid ? grid.parentElement : null;
+    if(!section){
+      var tbl=document.querySelector('table.price-table');
+      section=tbl ? tbl.parentElement : null;
+    }
     if(!section) return;
     var row=document.getElementById('moved-order-link-row');
     if(!row){
@@ -2159,8 +2171,17 @@ function parseOrderHash(){
     }
     var box=document.getElementById('admin-order-btns');
     if(!box) return;
-    previewBtns.forEach(function(pb){
-      var cat=catNameFromPreviewBtn(pb); if(!cat) return;
+    var moveCats=previewBtns.map(function(pb){ return catNameFromPreviewBtn(pb); }).filter(Boolean);
+    if(!moveCats.length){
+      [].slice.call(document.querySelectorAll('table.price-table thead th')).forEach(function(th){
+        var txt=(th.innerText||'').replace(/\s+/g,' ').trim();
+        if(txt.indexOf('PROFIT')>=0){
+          var nm=txt.split('\u00d7')[0].trim().split(' PROFIT')[0].trim();
+          if(nm) moveCats.push(nm);
+        }
+      });
+    }
+    moveCats.forEach(function(cat){
       var slug=catSlug(cat);
       var existingMoved=moved[slug];
       if(existingMoved && document.body.contains(existingMoved) && existingMoved.parentElement===row){
