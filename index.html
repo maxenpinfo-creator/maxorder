@@ -1557,9 +1557,8 @@ function getOrderLinkBase(){
   try{ stored=localStorage.getItem("orderLinkBase")||""; }catch(e){}
   if(stored){
     stored=stored.trim().replace(/#.*$/,"").replace(/\?.*$/,"").replace(/\/$/,"");
-    if(stored.toLowerCase().indexOf("price-list-single-file.html")>=0) stored=stored.replace(/price-list-single-file\.html$/i,"index.html");
     if(stored.toLowerCase().slice(-5)===".html") return stored;
-    return stored+"/index.html";
+    return stored+"/Price-List-Single-File.html";
   }
   var here=(location.href||"").split("#")[0].split("?")[0];
   if(location.protocol==="file:"){
@@ -1568,7 +1567,7 @@ function getOrderLinkBase(){
       pasted=pasted.trim().replace(/#.*$/,"").replace(/\?.*$/,"").replace(/\/$/,"");
       try{ localStorage.setItem("orderLinkBase", pasted); }catch(e){}
       if(pasted.toLowerCase().slice(-5)===".html") return pasted;
-      return pasted+"/index.html";
+      return pasted+"/Price-List-Single-File.html";
     }
   }
   return here;
@@ -1615,7 +1614,7 @@ function tick(){
   var panel=document.getElementById("admin-order-panel");
   var btnsBox=document.getElementById("admin-order-btns");
   var bodyTxt=document.body.innerText||"";
-  var isLogin=bodyTxt.indexOf("PRICE LIST MANAGER")>=0 && bodyTxt.indexOf("WHATSAPP SHARE")<0 && !document.querySelector("table.price-table");
+  var isLogin=bodyTxt.indexOf("PRICE LIST MANAGER")>=0 && bodyTxt.indexOf("WHATSAPP SHARE")<0;
   var orderOpen=document.getElementById("order-view") && document.getElementById("order-view").classList.contains("open");
   if(isLogin || orderOpen){ if(panel && panel.style.display!=="none") panel.style.display="none"; return; }
   var cats={};
@@ -1625,15 +1624,6 @@ function tick(){
     var catName=catNameFromPreviewBtn(b); if(!catName) return;
     cats[catSlug(catName)]=catName;
   });
-  if(!Object.keys(cats).length){
-    [].slice.call(document.querySelectorAll("table.price-table thead th")).forEach(function(th){
-      var txt=(th.innerText||"").replace(/\s+/g," ").trim();
-      if(txt.indexOf("PROFIT")>=0){
-        var nm=txt.split("\u00d7")[0].trim().split(" PROFIT")[0].trim();
-        if(nm) cats[catSlug(nm)]=nm;
-      }
-    });
-  }
   var slugs=Object.keys(cats);
   var noteEl=document.getElementById("admin-order-note");
   if(!slugs.length){
@@ -1680,11 +1670,7 @@ function parseOrderHash(){
     var rest=decodeURIComponent(m[1]);
   }
   var ci=rest.indexOf(":");
-  if(ci>=0){
-    var _enc=rest.slice(ci+1);
-    if(_enc.indexOf("cloud:")===0) return null;
-    return {slug:rest.slice(0,ci), enc:_enc};
-  }
+  if(ci>=0) return {slug:rest.slice(0,ci), enc:rest.slice(ci+1)};
   return {slug:rest, enc:""};
 }
 (function(){
@@ -2151,12 +2137,9 @@ function parseOrderHash(){
     var previewBtns=[].slice.call(document.querySelectorAll('button')).filter(function(b){
       return (b.innerText||'').indexOf('Preview & share list')>=0;
     });
-    var grid=previewBtns.length ? previewBtns[0].parentElement : null;
+    if(!previewBtns.length) return;
+    var grid=previewBtns[0].parentElement;
     var section=grid ? grid.parentElement : null;
-    if(!section){
-      var tbl=document.querySelector('table.price-table');
-      section=tbl ? tbl.parentElement : null;
-    }
     if(!section) return;
     var row=document.getElementById('moved-order-link-row');
     if(!row){
@@ -2171,17 +2154,8 @@ function parseOrderHash(){
     }
     var box=document.getElementById('admin-order-btns');
     if(!box) return;
-    var moveCats=previewBtns.map(function(pb){ return catNameFromPreviewBtn(pb); }).filter(Boolean);
-    if(!moveCats.length){
-      [].slice.call(document.querySelectorAll('table.price-table thead th')).forEach(function(th){
-        var txt=(th.innerText||'').replace(/\s+/g,' ').trim();
-        if(txt.indexOf('PROFIT')>=0){
-          var nm=txt.split('\u00d7')[0].trim().split(' PROFIT')[0].trim();
-          if(nm) moveCats.push(nm);
-        }
-      });
-    }
-    moveCats.forEach(function(cat){
+    previewBtns.forEach(function(pb){
+      var cat=catNameFromPreviewBtn(pb); if(!cat) return;
       var slug=catSlug(cat);
       var existingMoved=moved[slug];
       if(existingMoved && document.body.contains(existingMoved) && existingMoved.parentElement===row){
@@ -2402,11 +2376,6 @@ function parseOrderHash(){
     var seen={}, out=[];
     allRows().forEach(function(row){
       var n=rowName(row); if(!n || seen[n]) return; seen[n]=1;
-      var cells=row.querySelectorAll('td');
-      var availCell=cells[1];
-      var availSel=availCell ? availCell.querySelector('select') : null;
-      var avail=availSel ? availSel.value : (availCell ? (availCell.innerText||availCell.textContent||'') : '');
-      if(avail && avail.indexOf('Out of Stock')>=0) return;
       var url=getImage(n);
       if(url) out.push({name:n, url:url});
     });
@@ -2427,10 +2396,9 @@ function parseOrderHash(){
       var pageId=3+i*3, contentId=4+i*3, imgId=5+i*3;
       var maxW=523, maxH=720, sc=Math.min(maxW/pg.w, maxH/pg.h);
       var dw=Math.round(pg.w*sc), dh=Math.round(pg.h*sc);
-      var titleH=30;
-      var pageW=dw, pageH=dh+titleH;
-      var content='BT /F1 16 Tf 10 '+(dh+8)+' Td ('+pdfEscape(pg.name)+') Tj ET\nq '+dw+' 0 0 '+dh+' 0 0 cm /Im'+i+' Do Q';
-      obj(pageId, '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '+pageW+' '+pageH+'] /Resources << /XObject << /Im'+i+' '+imgId+' 0 R >> /Font << /F1 '+fontId+' 0 R >> >> /Contents '+contentId+' 0 R >>');
+      var x=Math.round((595-dw)/2), y=Math.round(842-40-dh);
+      var content='BT /F1 16 Tf 36 810 Td ('+pdfEscape(pg.name)+') Tj ET\nBT /F1 9 Tf 36 20 Td (Page '+(i+1)+' of '+pages.length+') Tj ET\nq '+dw+' 0 0 '+dh+' '+x+' '+y+' cm /Im'+i+' Do Q';
+      obj(pageId, '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /XObject << /Im'+i+' '+imgId+' 0 R >> /Font << /F1 '+fontId+' 0 R >> >> /Contents '+contentId+' 0 R >>');
       obj(contentId, '<< /Length '+content.length+' >>\nstream\n'+content+'\nendstream');
       var bin=''; for(var b=0;b<pg.jpegBytes.length;b++) bin+=String.fromCharCode(pg.jpegBytes[b]);
       obj(imgId, '<< /Type /XObject /Subtype /Image /Width '+pg.w+' /Height '+pg.h+' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '+bin.length+' >>\nstream\n'+bin+'\nendstream');
